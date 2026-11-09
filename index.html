@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#0f1630">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="성경퀴즈">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.json">
+<title>성경퀴즈 챌린지</title>
+<style>
+:root{
+  --bg:#0f1630; --bg2:#18224a; --card:#ffffff; --ink:#1b2340; --mute:#6b7394;
+  --line:#e4e7f2; --pri:#4f6cff; --pri2:#7b5cff; --gold:#f5b83d; --gold2:#ffdf7e;
+  --ok:#17b26a; --okbg:#e7f8ef; --bad:#f04438; --badbg:#fdecea;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
+  font-family:"Pretendard","Noto Sans KR","Apple SD Gothic Neo",system-ui,sans-serif;overscroll-behavior:none}
+body{background:radial-gradient(120% 60% at 50% 0%,#25327a 0%,var(--bg) 60%) fixed}
+button{font-family:inherit;cursor:pointer;border:0}
+.screen{display:none;min-height:100%;padding:calc(18px + env(safe-area-inset-top)) 16px calc(28px + env(safe-area-inset-bottom));max-width:560px;margin:0 auto;position:relative}
+.screen.on{display:block;animation:fadeIn .35s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* ---------- Home ---------- */
+.brand{color:#fff;text-align:center;padding:18px 0 10px}
+.brand .logo{font-size:44px;line-height:1;filter:drop-shadow(0 6px 14px rgba(245,184,61,.45))}
+.brand h1{margin:10px 0 4px;font-size:26px;letter-spacing:-.5px}
+.brand p{margin:0;color:#aab3d9;font-size:14px}
+.panel{background:var(--card);border-radius:20px;padding:18px;margin-top:14px;box-shadow:0 12px 30px rgba(0,0,0,.25)}
+.panel h2{font-size:15px;margin:0 0 12px;color:var(--ink);display:flex;align-items:center;gap:6px}
+.row{display:flex;gap:10px}
+.field{flex:1}
+.field label{display:block;font-size:12px;color:var(--mute);margin-bottom:5px;font-weight:600}
+.field input,.field select{width:100%;padding:12px;border:1.5px solid var(--line);border-radius:12px;font-size:16px;font-family:inherit;color:var(--ink);background:#fafbff;outline:none}
+.field input:focus,.field select:focus{border-color:var(--pri)}
+.ranges{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.rg{border:1.5px solid var(--line);border-radius:14px;padding:10px 4px;text-align:center;background:#fafbff;transition:.2s;position:relative}
+.rg b{display:block;font-size:15px}
+.rg span{font-size:11px;color:var(--mute)}
+.rg.in{background:linear-gradient(135deg,#eef1ff,#f3eeff);border-color:var(--pri)}
+.rg.in b{color:var(--pri)}
+.rg.edge::after{content:"";position:absolute;inset:-4px;border-radius:17px;border:2px solid var(--pri2);opacity:.35}
+.hint{font-size:12.5px;color:var(--mute);margin:10px 0 0;text-align:center}
+.btn{display:block;width:100%;padding:16px;border-radius:16px;font-size:17px;font-weight:800;color:#fff;
+  background:linear-gradient(135deg,var(--pri),var(--pri2));box-shadow:0 10px 22px rgba(79,108,255,.35);margin-top:16px;transition:transform .1s}
+.btn:active{transform:scale(.97)}
+.btn.ghost{background:#eef1ff;color:var(--pri);box-shadow:none}
+.btn.gold{background:linear-gradient(135deg,#f5b83d,#f08a24);box-shadow:0 10px 22px rgba(240,138,36,.35)}
+.err{color:var(--bad);font-size:13px;text-align:center;margin-top:8px;min-height:18px}
+.rules{font-size:12.5px;color:#4a5375;line-height:1.7;margin:0;padding-left:18px}
+.rules b{color:var(--ink)}
+.toprow{display:flex;justify-content:flex-end}
+.iconbtn{background:rgba(255,255,255,.1);color:#fff;border-radius:12px;padding:8px 11px;font-size:15px}
+
+/* ---------- Quiz ---------- */
+.hud{display:flex;align-items:center;gap:8px;color:#fff}
+.hud .x{background:rgba(255,255,255,.12);color:#fff;border-radius:12px;width:38px;height:38px;font-size:17px;flex:none}
+.prog{flex:1}
+.prog .t{display:flex;justify-content:space-between;font-size:12px;color:#aab3d9;margin-bottom:5px}
+.bar{height:8px;border-radius:8px;background:rgba(255,255,255,.12);overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#7b9bff,#c08bff);border-radius:8px;transition:width .4s}
+.stats{display:flex;gap:8px;margin:12px 0 10px}
+.stat{flex:1;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:8px 10px;color:#fff}
+.stat small{display:block;font-size:11px;color:#aab3d9}
+.stat b{font-size:20px;font-variant-numeric:tabular-nums;letter-spacing:-.5px}
+.stat.combo b{color:var(--gold2)}
+.stat.fire{animation:glow 1s infinite alternate}
+@keyframes glow{from{box-shadow:0 0 0 rgba(245,184,61,0)}to{box-shadow:0 0 18px rgba(245,184,61,.55)}}
+.bump{animation:bump .45s}
+@keyframes bump{30%{transform:scale(1.25)}}
+.lesson{background:linear-gradient(135deg,#2b3a8c,#3d2f8f);color:#fff;border-radius:16px 16px 0 0;padding:12px 16px;font-size:14px;font-weight:700;line-height:1.4;display:flex;gap:8px;align-items:flex-start}
+.lesson .tag{flex:none;background:rgba(255,255,255,.18);border-radius:8px;padding:2px 8px;font-size:12px;margin-top:1px}
+.qcard{background:var(--card);border-radius:0 0 18px 18px;padding:16px 16px 18px;box-shadow:0 12px 30px rgba(0,0,0,.28);position:relative;overflow:hidden}
+.qcard.golden{box-shadow:0 0 0 3px var(--gold),0 12px 30px rgba(245,184,61,.35)}
+.qno{font-size:12.5px;font-weight:800;color:var(--pri);margin-bottom:6px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.chip{font-size:11px;font-weight:800;padding:2px 8px;border-radius:20px;background:#fff4dc;color:#b7791f}
+.chip.multi{background:#ffe9ef;color:#d6336c}
+.qtext{font-size:18px;font-weight:700;line-height:1.55;margin:0 0 14px;word-break:keep-all}
+.opts{display:flex;flex-direction:column;gap:9px}
+.opt{display:flex;gap:10px;align-items:flex-start;text-align:left;background:#f6f7fc;border:2px solid transparent;border-radius:14px;padding:13px 12px;font-size:16px;line-height:1.45;color:var(--ink);transition:background .15s,border .15s,transform .1s;word-break:keep-all}
+.opt:active{transform:scale(.985)}
+.opt .n{flex:none;width:26px;height:26px;border-radius:50%;background:#fff;border:1.5px solid #cfd5ea;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:var(--mute)}
+.opt.sel{border-color:var(--pri);background:#eef1ff}
+.opt.sel .n{background:var(--pri);color:#fff;border-color:var(--pri)}
+.opt.right{border-color:var(--ok);background:var(--okbg)}
+.opt.right .n{background:var(--ok);color:#fff;border-color:var(--ok)}
+.opt.wrong{border-color:var(--bad);background:var(--badbg);opacity:.75;text-decoration:line-through;text-decoration-color:rgba(240,68,56,.5)}
+.opt.wrong .n{background:var(--bad);color:#fff;border-color:var(--bad)}
+.opt:disabled{cursor:default}
+.shake{animation:shake .45s}
+@keyframes shake{20%,60%{transform:translateX(-7px)}40%,80%{transform:translateX(7px)}}
+.fb{margin-top:14px;border-radius:16px;padding:14px 14px 12px;display:none;animation:pop .35s cubic-bezier(.2,1.6,.4,1)}
+.fb.on{display:block}
+.fb.ok{background:var(--okbg);border:1.5px solid #a6e9c8}
+.fb.no{background:var(--badbg);border:1.5px solid #f7b9b3}
+.fb .m{display:flex;align-items:center;gap:10px;font-weight:800;font-size:17px}
+.fb .m .em{font-size:30px;display:inline-block;animation:wiggle 1s ease infinite}
+.fb .pts{margin-left:auto;font-size:15px;font-weight:900;white-space:nowrap}
+.fb.ok .pts{color:var(--ok)} .fb.no .pts{color:var(--bad)}
+.fb .sub{font-size:13.5px;color:#4a5375;margin-top:8px;line-height:1.55}
+.fb .remind{background:#fff;border-radius:12px;padding:10px 12px;margin-top:10px;font-size:13.5px;line-height:1.6;border:1px dashed #f0a39b}
+.fb .remind s{color:var(--bad)}
+.fb .ref{font-size:12px;color:var(--mute);margin-top:8px}
+.fb .btn{margin-top:12px;padding:13px}
+.fb .giveup{background:none;color:var(--mute);font-size:13px;text-decoration:underline;margin-top:8px;padding:4px}
+@keyframes pop{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:none}}
+@keyframes wiggle{0%,100%{transform:rotate(0)}25%{transform:rotate(-12deg)}75%{transform:rotate(12deg)}}
+.floatpts{position:fixed;font-weight:900;font-size:26px;pointer-events:none;z-index:50;animation:floatup 1.1s ease-out forwards;text-shadow:0 2px 8px rgba(0,0,0,.3)}
+@keyframes floatup{from{opacity:1;transform:translate(-50%,0) scale(.8)}to{opacity:0;transform:translate(-50%,-90px) scale(1.2)}}
+
+/* ---------- Overlays ---------- */
+.toast{position:fixed;left:50%;top:16px;transform:translateX(-50%) translateY(-120px);background:#1f2a5c;color:#fff;padding:10px 18px;border-radius:30px;font-weight:800;font-size:14.5px;z-index:80;transition:transform .35s cubic-bezier(.2,1.4,.4,1);box-shadow:0 10px 24px rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.15);white-space:nowrap}
+.toast.on{transform:translateX(-50%) translateY(0)}
+.popup{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:90;background:rgba(10,14,35,.55);backdrop-filter:blur(3px)}
+.popup.on{display:flex}
+.popup .box{background:#fff;border-radius:24px;padding:26px 22px;width:min(86vw,380px);text-align:center;animation:boom .5s cubic-bezier(.2,1.6,.4,1)}
+.popup .big{font-size:64px;line-height:1;margin-bottom:8px;display:inline-block}
+.popup .tt{font-size:22px;font-weight:900;color:var(--pri2);margin-bottom:6px;letter-spacing:-.5px}
+.popup .dd{font-size:16px;font-weight:700;line-height:1.5;word-break:keep-all}
+.popup .x2{display:inline-block;margin-top:12px;background:linear-gradient(135deg,#f5b83d,#f08a24);color:#fff;font-weight:900;padding:6px 14px;border-radius:20px;font-size:14px}
+.popup.badp .tt{color:var(--bad)}
+.popup.badp .box{animation:boom .5s cubic-bezier(.2,1.6,.4,1),shake .5s .5s}
+@keyframes boom{from{opacity:0;transform:scale(.5) rotate(-6deg)}to{opacity:1;transform:none}}
+.spin{animation:spin 1.6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.bounce{animation:bnc .8s ease infinite}
+@keyframes bnc{50%{transform:translateY(-10px)}}
+
+/* modal */
+.modal .box .btns{display:flex;gap:8px;margin-top:16px}
+.modal .box .btns .btn{margin:0;padding:13px;font-size:15px}
+
+/* SYSTEM ERROR */
+.syserr{position:fixed;inset:0;z-index:95;display:none;background:#05060c;color:#3dff8c;font-family:"Courier New",monospace;overflow:hidden}
+.syserr.on{display:flex;align-items:center;justify-content:center;flex-direction:column;animation:flick .12s steps(2) 10}
+.syserr::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(255,255,255,.05) 0 2px,transparent 2px 4px);pointer-events:none}
+.syserr .g{font-size:34px;font-weight:900;position:relative;letter-spacing:2px;color:#ff3b5c;text-shadow:3px 0 #00e5ff,-3px 0 #ff00c8;animation:glitch .3s infinite}
+.syserr .l{max-width:88vw;margin-top:16px;font-size:16px;line-height:1.7;text-align:center;font-family:"Pretendard","Noto Sans KR",sans-serif;color:#d9ffe9;font-weight:700;word-break:keep-all}
+.syserr .code{font-size:11px;color:#3dff8c;opacity:.7;margin-top:18px;white-space:pre;text-align:left}
+.syserr .ok{margin-top:18px;color:#3dff8c;font-weight:800;opacity:0;transition:opacity .3s;font-family:"Pretendard","Noto Sans KR",sans-serif}
+@keyframes flick{50%{opacity:.3}}
+@keyframes glitch{0%{transform:translate(0)}20%{transform:translate(-3px,2px) skewX(8deg)}40%{transform:translate(3px,-1px)}60%{transform:translate(-2px,1px) skewX(-6deg)}80%{transform:translate(2px,2px)}100%{transform:translate(0)}}
+body.glitching .screen{animation:glitch .2s 6;filter:hue-rotate(90deg)}
+
+/* Legend (50 combo) */
+.legend{position:fixed;inset:0;z-index:100;display:none;background:radial-gradient(circle at 50% 40%,#3a2a00,#0b0820 70%);color:#fff;text-align:center;flex-direction:column;align-items:center;justify-content:center;padding:20px}
+.legend.on{display:flex}
+.legend canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.trophy{width:170px;height:190px;animation:rise 1.2s cubic-bezier(.2,1.4,.4,1) both;filter:drop-shadow(0 0 30px rgba(255,210,80,.7));position:relative}
+@keyframes rise{from{transform:translateY(120px) scale(.3);opacity:0}to{transform:none;opacity:1}}
+.legend .lines{min-height:170px;margin-top:16px;position:relative}
+.legend .ln{font-size:20px;font-weight:900;line-height:1.5;opacity:0;transform:translateY(14px);transition:all .6s;word-break:keep-all}
+.legend .ln.on{opacity:1;transform:none}
+.legend .ln.gold{font-size:28px;background:linear-gradient(180deg,#fff3c4,#f5b83d);-webkit-background-clip:text;background-clip:text;color:transparent}
+.legend .btn{max-width:320px;opacity:0;transition:opacity .5s;position:relative}
+.legend .btn.on{opacity:1}
+
+/* Strike (10 wrong) */
+.strike{position:fixed;inset:0;z-index:100;display:none;background:#fff4f2;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center}
+.strike.on{display:flex;animation:fadeIn .4s}
+.strike .stamp{position:absolute;top:12%;right:8%;border:4px solid var(--bad);color:var(--bad);font-weight:900;font-size:22px;padding:6px 12px;border-radius:10px;transform:rotate(14deg);opacity:0;animation:stamp .5s 1.4s forwards}
+@keyframes stamp{from{opacity:0;transform:rotate(14deg) scale(2.4)}to{opacity:.9;transform:rotate(14deg) scale(1)}}
+.strike h2{margin:10px 0 6px;font-size:24px;color:var(--bad)}
+.strike p{font-size:17px;line-height:1.65;font-weight:700;margin:6px 0;word-break:keep-all;color:#40243a}
+.bot{width:200px;height:220px}
+.bot .armL{transform-origin:62px 120px;animation:waveL .7s ease-in-out infinite alternate}
+.bot .armR{transform-origin:138px 120px;animation:waveR .7s ease-in-out infinite alternate}
+@keyframes waveL{from{transform:rotate(-8deg)}to{transform:rotate(10deg)}}
+@keyframes waveR{from{transform:rotate(8deg)}to{transform:rotate(-10deg)}}
+.bot .body{animation:hop 1.4s ease-in-out infinite}
+@keyframes hop{50%{transform:translateY(-6px)}}
+.bot .sweat{animation:drip 1.4s ease-in infinite}
+@keyframes drip{from{transform:translateY(0);opacity:1}to{transform:translateY(22px);opacity:0}}
+
+/* ---------- Result ---------- */
+.res-hero{text-align:center;color:#fff;padding:18px 0 6px}
+.res-hero .em{font-size:58px}
+.res-hero .title{font-size:15px;color:var(--gold2);font-weight:800;margin-top:6px}
+.res-hero .score{font-size:46px;font-weight:900;letter-spacing:-1px;margin:4px 0;font-variant-numeric:tabular-nums}
+.res-hero .who{color:#aab3d9;font-size:14px}
+.newrec{display:inline-block;background:linear-gradient(135deg,#f5b83d,#f08a24);color:#fff;font-weight:900;padding:5px 14px;border-radius:20px;font-size:13px;margin-top:8px;animation:bump 1s infinite}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.kpi{background:#f6f7fc;border-radius:14px;padding:12px 6px;text-align:center}
+.kpi b{display:block;font-size:20px}
+.kpi small{color:var(--mute);font-size:11.5px}
+table.rec{width:100%;border-collapse:collapse;font-size:13.5px}
+table.rec th{font-size:11.5px;color:var(--mute);font-weight:700;text-align:left;padding:6px 4px;border-bottom:1.5px solid var(--line)}
+table.rec td{padding:9px 4px;border-bottom:1px solid var(--line)}
+table.rec td.r,table.rec th.r{text-align:right}
+table.rec tr.me td{background:#fff8e6;font-weight:800}
+.medal{font-size:16px}
+.review{list-style:none;margin:0;padding:0}
+.review li{padding:10px 0;border-bottom:1px solid var(--line);font-size:13.5px;line-height:1.55}
+.review li .ql{font-size:11.5px;color:var(--pri);font-weight:700}
+.review li .a{color:var(--ok);font-weight:800}
+.review li .w{color:var(--bad)}
+.empty{color:var(--mute);font-size:13px;text-align:center;padding:10px}
+.foot{color:#7f88b3;text-align:center;font-size:11.5px;margin-top:18px}
+</style>
+</head>
+<body>
+
+<!-- ================= HOME ================= -->
+<section class="screen on" id="home">
+  <div class="toprow"><button class="iconbtn" id="snd" aria-label="소리">🔊</button></div>
+  <div class="brand">
+    <div class="logo">📖🏆</div>
+    <h1>성경퀴즈 챌린지</h1>
+    <p>예상문제 315문항 · 범위 골라서 50문제 도전!</p>
+  </div>
+
+  <div class="panel">
+    <h2>👤 도전자 정보</h2>
+    <div class="row">
+      <div class="field" style="flex:2"><label for="nm">이름</label><input id="nm" maxlength="12" placeholder="이름을 적어줘" autocomplete="off"></div>
+      <div class="field"><label for="ag">나이</label><input id="ag" type="number" inputmode="numeric" min="1" max="120" placeholder="나이"></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>🎯 출제 범위</h2>
+    <div class="ranges" id="rgs"></div>
+    <div class="row">
+      <div class="field"><label for="rs">시작 범위</label><select id="rs"></select></div>
+      <div class="field"><label for="re">끝 범위</label><select id="re"></select></div>
+    </div>
+    <p class="hint" id="rinfo"></p>
+    <div class="err" id="err"></div>
+    <button class="btn" id="go">도전 시작! 🚀</button>
+  </div>
+
+  <div class="panel">
+    <h2>📜 게임 규칙</h2>
+    <ul class="rules">
+      <li>정답 <b>+10점</b>, 오답 <b>−20점</b> (오답이면 다시 풀 수 있어요)</li>
+      <li>틀리지 않고 <b>5콤보마다 누적 점수 2배!</b> (5·10·15 … 50콤보)</li>
+      <li>가끔 <b>황금 문제</b>가 나타나요 — 맞히면 +30점 ✨</li>
+      <li>문제 순서도, 보기 순서도 매번 섞여요</li>
+    </ul>
+  </div>
+
+  <div class="panel" id="homeRec" style="display:none">
+    <h2>🏅 <span id="homeRecT">내 기록</span></h2>
+    <div id="homeRecBody"></div>
+  </div>
+  <div class="foot">인터넷 없이 동작해요 · 기록은 이 휴대폰에 저장돼요</div>
+</section>
+
+<!-- ================= QUIZ ================= -->
+<section class="screen" id="quiz">
+  <div class="hud">
+    <button class="x" id="quit" aria-label="그만하기">✕</button>
+    <div class="prog">
+      <div class="t"><span id="pn">1 / 50</span><span id="pr">범위 1~4</span></div>
+      <div class="bar"><i id="pb"></i></div>
+    </div>
+  </div>
+  <div class="stats">
+    <div class="stat"><small>점수</small><b id="sc">0</b></div>
+    <div class="stat combo" id="cbBox"><small>연속 정답</small><b id="cb">0</b></div>
+    <div class="stat"><small>정답 / 오답</small><b id="ox" style="font-size:17px">0 / 0</b></div>
+  </div>
+  <div class="lesson"><span class="tag" id="ltag">주제</span><span id="lt"></span></div>
+  <div class="qcard" id="qc">
+    <div class="qno" id="qno"></div>
+    <p class="qtext" id="qt"></p>
+    <div class="opts" id="ops"></div>
+    <div class="fb" id="fb"></div>
+  </div>
+</section>
+
+<!-- ================= RESULT ================= -->
+<section class="screen" id="result">
+  <div class="res-hero">
+    <div class="em" id="rEm">🏆</div>
+    <div class="title" id="rTitle"></div>
+    <div class="score" id="rScore">0</div>
+    <div class="who" id="rWho"></div>
+    <div id="rNew"></div>
+  </div>
+  <div class="panel">
+    <div class="grid3">
+      <div class="kpi"><b id="kAcc">0%</b><small>한 번에 정답률</small></div>
+      <div class="kpi"><b id="kOk">0</b><small>한 번에 맞힘</small></div>
+      <div class="kpi"><b id="kMax">0</b><small>최대 콤보</small></div>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>🏅 <span id="recT"></span></h2>
+    <div id="recBody"></div>
+  </div>
+  <div class="panel" id="revPanel">
+    <h2>📝 다시 볼 문제 <span id="revN" style="color:var(--mute);font-weight:600"></span></h2>
+    <ul class="review" id="rev"></ul>
+    <button class="btn gold" id="retryWrong">틀린 문제만 다시 풀기 🔁</button>
+  </div>
+  <button class="btn" id="again">새로 도전하기</button>
+  <button class="btn ghost" id="home2">처음 화면으로</button>
+</section>
+
+<!-- ================= OVERLAYS ================= -->
+<div class="toast" id="toast"></div>
+<div class="popup" id="pop"><div class="box"><div class="big" id="popE"></div><div class="tt" id="popT"></div><div class="dd" id="popD"></div><div id="popX"></div></div></div>
+<div class="popup modal" id="modal"><div class="box">
+  <div class="big">🤔</div><div class="tt">그만할까요?</div><div class="dd">지금 그만두면 이번 점수는 기록되지 않아요.</div>
+  <div class="btns"><button class="btn ghost" id="mNo">계속할래</button><button class="btn" id="mYes">그만하기</button></div>
+</div></div>
+
+<div class="syserr" id="sys">
+  <div class="g">SYSTEM ERROR!!!</div>
+  <div class="l">너무 잘하니까 시스템이 못 따라가고 있어요.</div>
+  <div class="code" id="sysCode"></div>
+  <div class="ok" id="sysOk">✔ 시스템 복구 완료 · 사과의 의미로 보너스 +50점!</div>
+</div>
+
+<div class="legend" id="legend">
+  <canvas id="fw"></canvas>
+  <svg class="trophy" viewBox="0 0 170 190" aria-hidden="true">
+    <defs>
+      <linearGradient id="gg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff2b0"/><stop offset=".45" stop-color="#f5c242"/><stop offset="1" stop-color="#b9780f"/></linearGradient>
+      <linearGradient id="gg2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f5c242"/><stop offset="1" stop-color="#8f5a07"/></linearGradient>
+    </defs>
+    <path d="M38 22 h94 v40 c0 34-22 56-47 56 s-47-22-47-56z" fill="url(#gg)"/>
+    <path d="M38 34 H16 c0 30 14 42 30 44" fill="none" stroke="url(#gg2)" stroke-width="9" stroke-linecap="round"/>
+    <path d="M132 34 h22 c0 30-14 42-30 44" fill="none" stroke="url(#gg2)" stroke-width="9" stroke-linecap="round"/>
+    <rect x="74" y="116" width="22" height="26" fill="url(#gg2)"/>
+    <rect x="50" y="142" width="70" height="14" rx="4" fill="url(#gg)"/>
+    <rect x="40" y="156" width="90" height="22" rx="6" fill="url(#gg2)"/>
+    <text x="85" y="172" text-anchor="middle" font-size="13" font-weight="900" fill="#fff7d6">50 COMBO</text>
+    <path d="M85 44 l8 16 18 3-13 12 3 18-16-9-16 9 3-18-13-12 18-3z" fill="#fffbe8" opacity=".95"/>
+    <path d="M50 30 q4 30 18 48" stroke="#fff" stroke-width="5" stroke-linecap="round" fill="none" opacity=".45"/>
+  </svg>
+  <div class="lines" id="lgLines"></div>
+  <button class="btn gold" id="lgBtn">결과 보러 가기 👑</button>
+</div>
+
+<div class="strike" id="strike">
+  <div class="stamp">채점 거부</div>
+  <svg class="bot" viewBox="0 0 200 220" aria-hidden="true">
+    <g class="body">
+      <g class="armL"><path d="M62 120 L34 52" stroke="#5a6aa8" stroke-width="12" stroke-linecap="round"/><circle cx="32" cy="46" r="11" fill="#ffd6c2" stroke="#5a6aa8" stroke-width="3"/>
+        <path d="M30 40 L30 6" stroke="#8a6d3b" stroke-width="4"/><path d="M30 6 L62 14 L30 24z" fill="#fff" stroke="#c9cfe6" stroke-width="2"/></g>
+      <g class="armR"><path d="M138 120 L166 52" stroke="#5a6aa8" stroke-width="12" stroke-linecap="round"/><circle cx="168" cy="46" r="11" fill="#ffd6c2" stroke="#5a6aa8" stroke-width="3"/>
+        <path d="M170 40 L170 6" stroke="#8a6d3b" stroke-width="4"/><path d="M170 6 L138 14 L170 24z" fill="#fff" stroke="#c9cfe6" stroke-width="2"/></g>
+      <rect x="55" y="70" width="90" height="100" rx="26" fill="#7b8ce0"/>
+      <rect x="66" y="84" width="68" height="50" rx="14" fill="#eef1ff"/>
+      <path d="M78 100 l10 8 M88 100 l-10 8" stroke="#3b467a" stroke-width="4" stroke-linecap="round"/>
+      <path d="M112 100 l10 8 M122 100 l-10 8" stroke="#3b467a" stroke-width="4" stroke-linecap="round"/>
+      <path d="M86 124 q14 -9 28 0" stroke="#3b467a" stroke-width="4" fill="none" stroke-linecap="round"/>
+      <circle cx="73" cy="118" r="5" fill="#ffb3c1" opacity=".8"/><circle cx="127" cy="118" r="5" fill="#ffb3c1" opacity=".8"/>
+      <line x1="100" y1="70" x2="100" y2="56" stroke="#7b8ce0" stroke-width="5"/><circle cx="100" cy="52" r="7" fill="#f04438"/>
+      <path class="sweat" d="M142 84 q6 10 0 14 q-6 -4 0 -14z" fill="#7cc8ff"/>
+      <rect x="70" y="146" width="60" height="14" rx="7" fill="#5a6aa8"/>
+      <text x="100" y="157" text-anchor="middle" font-size="10" font-weight="900" fill="#fff">채점봇</text>
+      <rect x="68" y="170" width="18" height="30" rx="8" fill="#5a6aa8"/><rect x="114" y="170" width="18" height="30" rx="8" fill="#5a6aa8"/>
+    </g>
+  </svg>
+  <h2>10연속 땡이라…..</h2>
+  <p>나 이제 채점 안할래.<br><b style="color:var(--bad)">채점거부선언!!!</b></p>
+  <p>가서 교재와 화해하고 돌아와! 📚</p>
+  <button class="btn" id="strikeBtn" style="max-width:320px">교재랑 화해하고 왔어요 🙏</button>
+</div>
+
+<script>
+/* ================= DATA ================= */
+const Q = [{"n":1,"l":"1과 무엇을 따라 살아야 하나요?","q":"성경적 세계관에 대한 설명은 무엇인가요?","o":["세상을 바라보는 안경이다","세상에서의 삶의 방식과 선택의 기준을 제시한다","세상을 이해하는 틀이나 전제로 그 전제에 따른 삶의 방식이다","성경의 가르침에 따라 세상을 바라보고, 이해하고, 행동하는 삶의 방식이다"],"a":[4],"r":"교 1과 22p"},{"n":2,"l":"1과 무엇을 따라 살아야 하나요?","q":"히브리서 11장 1절에서 믿음은 무엇이라고 하였나요?","o":["믿음은 조건없이 신뢰하는 것이다","믿음은 바라는 것들의 실상이다","믿음은 보이는 것으로 나타나야 한다","믿음은 확신을 가지는 것이다"],"a":[2],"r":"교 1과 22p"},{"n":3,"l":"1과 무엇을 따라 살아야 하나요?","q":"로마서 12장 2절에서 우리는 무엇을 따라 살아야 한다고 하였나요?","o":["세상 문화","교회의 꿈","하나님의 뜻","기도의 응답"],"a":[3],"r":"교 1과 24p"},{"n":4,"l":"1과 무엇을 따라 살아야 하나요?","q":"성경적 세계관에 따른 우리의 생활로 말한 것이 잘못된 것은 무엇인가요?","o":["성경을 통해 세상을 바라본다","힘든 일을 당할 때 하나님의 손길을 바라본다","어떤 선택을 해야 할 때 하나님의 선한 계획을 생각한다","나와 다른 친구를 만날 때 선물을 많이 주는지를 생각한다"],"a":[4],"r":"교 1과 25p"},{"n":5,"l":"1과 무엇을 따라 살아야 하나요?","q":"히브리서 저자는 모든 세계가 무엇으로 지어졌다고 하였나요?","o":["불","생명","자연적인 진화","하나님의 말씀"],"a":[4],"r":"외 1과 히 11:3 교 1과 22p"},{"n":6,"l":"2과 이 세상은 누구의 것일까요?","q":"시편 24편은 다윗이 언제 지은 시인가요?","o":["하나님의 언약궤를 예루살렘으로 옮기면서","사울 왕에게 쫒겨 다른 지역으로 도망가면서","예루살렘에서 이스라엘의 왕으로 세워지면서","전쟁에서 승리하고 예루살렘으로 돌아오면서"],"a":[1],"r":"교 2과 26p"},{"n":7,"l":"2과 이 세상은 누구의 것일까요?","q":"시편 24편 2절에서 ‘그 터를 바다 위에 세우셨다’는 말씀의 뜻은 무엇인가요?","o":["하나님이 땅을 둘로 나누시고 바다를 땅 위에 만드셨다","하나님이 혼돈 위에 질서 있는 아름다운 세상을 만드셨다","하나님이 바다를 창조하시고 그 위에 하늘을 만드셨다","하나님이 이 세상을 창조하시고 그 위에 사람을 만드셨다"],"a":[2],"r":"교 2과 26p"},{"n":8,"l":"2과 이 세상은 누구의 것일까요?","q":"시편 24편에 기록된 내용이 아닌 것은 무엇인가요?","o":["하나님은 이 세상을 창조하셨다","하나님은 이 세상의 주인이시다","하나님은 이 세상을 다스리신다","하나님은 이 세상을 진화시킨다"],"a":[4],"r":"교 2과 26p"},{"n":9,"l":"2과 이 세상은 누구의 것일까요?","q":"하나님과 나와의 관계에 대해 말한 것이 잘못된 것은 무엇인가요?","o":["하나님은 모든 세상과 나의 주인이시다","하나님은 나를 사랑으로 다스리신다","하나님은 나의 모든 삶에서 활동하신다","하나님은 나의 삶을 보고 구원하셨다"],"a":[4],"r":"교 2과 29p"},{"n":10,"l":"2과 이 세상은 누구의 것일까요?","q":"하나님께서 이 세상을 언제 창조하셨나요(창 1:1)?","o":["태초에","창세 후에","구원하실 때","우주가 생겨날 때"],"a":[1],"r":"학 2과 7p"},{"n":11,"l":"2과 이 세상은 누구의 것일까요?","q":"시편 24편 1절에서 하나님이 창조하신 것으로 말한 것이 아닌 것은 무엇인가요?","o":["땅","세계","바다","거기 충만한 것"],"a":[3],"r":"외 2과 시 24:1 교 2과 28p"},{"n":12,"l":"3과 이 세상은 선한가요? 악한가요?","q":"하와에게 다가가 동산 나무의 열매를 따 먹으라고 유혹한 것은 무엇인가요?","o":["아담","늑대","여우","뱀"],"a":[4],"r":"교 3과 32p"},{"n":13,"l":"3과 이 세상은 선한가요? 악한가요?","q":"죄를 지은 아담에게 하나님이 ‘네가 어디 있느냐’라고 부르시자 대답한 말은 무엇인가요?","o":["일을 하고 쉬었나이다","두려워하여 숨었나이다","회개 기도를 하였나이다","하와를 찾고 있었나이다"],"a":[2],"r":"교 3과 30p"},{"n":14,"l":"3과 이 세상은 선한가요? 악한가요?","q":"하나님이 죄를 지은 일에 대해 벌한 내용이 잘못된 것은 무엇인가요?","o":["뱀에게는 배로 다니며 흙을 먹게 하셨다","여자에게는 여자의 후손과 뱀이 원수가 되게 하셨다","남자에게는 소산을 먹기 위해 수고를 하게 하셨다","땅에게는 더 많은 소산과 열매를 맺게 하셨다"],"a":[4],"r":"교 3과 32p"},{"n":15,"l":"3과 이 세상은 선한가요? 악한가요?","q":"죄로 인해 하나님과의 관계가 깨어진 우리의 삶에 대해 말한 것이 잘못된 것은 무엇인가요?","o":["서로 다투고 미워해요","겉모습을 중요하게 생각해요","하나님을 사랑하고 의지해요","욕심이 많아지고 불평해요"],"a":[3],"r":"교 3과 33p"},{"n":16,"l":"3과 이 세상은 선한가요? 악한가요?","q":"하나님께서 아담과 하와에게 약속하신 것은 무엇인가요?","o":["선악을 알게 하는 나무의 열매를 먹지 말라","생명을 알게 하는 나무의 열매를 먹지 말라","동산에 있는 모든 나무의 열매를 먹지 말라","하나님을 알게 하는 나무의 열매를 먹지 말라"],"a":[1],"r":"학 3과 9p"},{"n":17,"l":"3과 이 세상은 선한가요? 악한가요?","q":"창세기 3장 7절에서 아담과 하와가 눈이 밝아져 자기들이 벗은 줄을 알고 무엇으로 치마를 만들어 입었 나요?","o":["사과나무 잎","포도나무 잎","상수리나무 잎","무화과나무 잎"],"a":[4],"r":"본 3과 창 3:7"},{"n":18,"l":"3과 이 세상은 선한가요? 악한가요?","q":"이사야 59장 2절에 “오직 너희 ( )이 너희와 너희 하나님 사이를 갈라 놓았고 너희 ( )가 그의 얼굴을 가리어서 너희에게서 듣지 않으시게 함이니라”는 말씀에서 ( )안에 들어갈 말씀으로 연결된 것은 무엇인가요?","o":["마음 – 죄","죄악 – 죄","생각 - 머리","죄악 - 머리"],"a":[2],"r":"외 3과 사 59:2"},{"n":19,"l":"4과 누가 이 세상을 회복하나요?","q":"골로새서 1장에서 말한 그리스도에 대한 설명이 잘못된 것은 무엇인가요?","o":["만물과 함께 죽으셨다","만물이 예수 안에 함께 섰다","십자가의 피로 화평을 이루셨다","창조 때부터 계셨던 창조주이시다"],"a":[1],"r":"교 4과 34p"},{"n":20,"l":"4과 누가 이 세상을 회복하나요?","q":"하나님의 창조 세계가 그리스도를 통해 온전히 회복되는 것을 무엇이라고 하나요?","o":["은혜","영생","구속","성육신"],"a":[3],"r":"교 4과 34p"},{"n":21,"l":"4과 누가 이 세상을 회복하나요?","q":"하나님과 사람 사이의 깨어진 관계를 회복할 수 있는 유일한 길은 무엇인가요?","o":["예수님을 믿는 것입니다.","착한 일을 하는 것입니다.","자랑을 하는 것입니다.","전도를 많이 하는 것입니다."],"a":[1],"r":"교 4과 36p"},{"n":22,"l":"4과 누가 이 세상을 회복하나요?","q":"주변에서 나타나는 일에 대해 우리가 회복시킬 수 있는 일로 말한 것이 아닌 것은 무엇인가요?","o":["싸운 친구들을 화해시키는 일을 한다","아무데나 버려진 쓰레기를 주워 쓰레기통에 버린다","우울해하는 친구의 이야기를 듣고 공감해 준다","장애가 있는 친구가 있으면 왕따를 시킨다"],"a":[4],"r":"교 4과 37p"},{"n":23,"l":"4과 누가 이 세상을 회복하나요?","q":"골로새서 1장에서 예수님에 대한 설명이 아닌 것은 무엇인가요?","o":["보이지 아니하는 하나님의 형상이시다","모든 만물보다 먼저 계셨다","하나님과 화목하게 되기를 기뻐하셨다","병자들을 고치시고 회복시키셨다"],"a":[4],"r":"학 4과 11p"},{"n":24,"l":"5과 우리는 누구인가요?","q":"사람이 하나님의 형상을 따라 하나님의 모양대로 창조되었다는 것은 어떤 의미가 있나요?","o":["사람의 전인격이 하나님의 성품과 속성을 닮았다는 뜻이다","사람의 몸이 보이지 않는 하나님의 몸을 보여준다는 뜻이다","사람의 마음과 생각이 하나님의 마음과 생각을 가진다는 뜻이다","사람의 생활이 하나님의 뜻을 이해하고 따라간다는 뜻이다"],"a":[1],"r":"교 5과 40p"},{"n":25,"l":"5과 우리는 누구인가요?","q":"창세기 1장 26절에서 ‘우리의 형상을 따라 우리의 모양대로 우리가 사람을 만들고’라는 말씀에서 ‘우리’가 의미하는 것은 무엇인가요?","o":["빛과 물과 땅을 말한다","영과 혼과 몸을 말한다","삼위 하나님을 말한다","몸과 피와 뼈를 말한다"],"a":[3],"r":"교 5과 40p"},{"n":26,"l":"5과 우리는 누구인가요?","q":"우리가 하나님의 형상으로 빚어진 존재에 대해 설명한 것이 잘못된 것은 무엇인가요?","o":["하나님과 언약 관계에 있는 대리자로 살아가는 것이다","생명과 존재의 가치를 존중하고 섬기는 삶을 살아야 한다","하나님의 영광만이 드러나도록 모든 것을 무시하고 행하여야 한다","하나님의 선하심과 지혜를 반영하는 삶으로 이웃과 관계를 맺는 것이다"],"a":[3],"r":"교 5과 40p"},{"n":27,"l":"5과 우리는 누구인가요?","q":"하나님은 사람이 혼자 사는 것이 좋지 아니하여 서로 돕고 섬기는 자로 무엇을 지으실 것이라고 하였나요?","o":["돕는 종","돕는 배필","현숙한 아내","지혜로운 여자"],"a":[2],"r":"학 5과 13p"},{"n":28,"l":"5과 우리는 누구인가요?","q":"창세기 2장 20절에서 아담이 이름을 지어준 대상으로 말한 것이 아닌 것은 무엇인가요?","o":["모든 가축","공중의 새","바다의 물고기","들의 모든 짐승"],"a":[3],"r":"본 5과 창 2:20"},{"n":29,"l":"6과 죄로 인해 우리는 어떻게 되었나요?","q":"가인과 아벨이 했던 일로 말한 것은 무엇인가요?","o":["농업과 어업","농업과 목축","상업과 어업","상업과 목축"],"a":[2],"r":"교 6과 44p"},{"n":30,"l":"6과 죄로 인해 우리는 어떻게 되었나요?","q":"창세기 4장 7절에서 하나님은 누구에게 ‘죄가 너를 원하나 너는 죄를 다스릴지니라’고 말하였나요?","o":["아담","하와","가인","아벨"],"a":[3],"r":"교 6과 44p"},{"n":31,"l":"6과 죄로 인해 우리는 어떻게 되었나요?","q":"우리가 죄를 짓지 않기 위해 해야 할 일이 아닌 것은 무엇인가요?","o":["좋은 점수를 얻기 위해 컨닝에 대한 유혹을 받을 때 정직한 마음을 갖는다","나보다 못한 친구를 무시하고자 하는 유혹을 받을 때 무시하는 마음을 갖는다","다른 친구들의 잘난 척을 보고 분노의 유혹을 받을 때 칭찬하는 마음을 갖는다","주일날 교회에 가지 못할 친구의 유혹을 받을 때 예배를 드리려는 마음을 갖는다"],"a":[2],"r":"교 6과 47p"},{"n":32,"l":"6과 죄로 인해 우리는 어떻게 되었나요?","q":"다음 중 가인에 대한 설명이 잘못된 것은 무엇인가요?","o":["동생 아벨을 쳐죽였다.","하나님께 드린 제사를 받지 않으셨다","제사를 받지 않자 분하여 안색이 변했다","자신이 지은 죄를 알고 하나님께 잘못을 고백하였다","하나님께 아벨이 어디 있느냐는 물음에 알지 못한다고 거짓말을 하였다"],"a":[4],"r":"학 6과 15p"},{"n":33,"l":"6과 죄로 인해 우리는 어떻게 되었나요?","q":"가인이 동생 아벨을 죽인 죄로 받은 벌이 아닌 것은 무엇인가요?","o":["네가 땅에서 저주를 받으리라","너는 땅에서 피하며 유리하는 자가 되리라","네가 다시 나를 찾아오더라도 만나지 않으리라","네가 밭을 갈아도 땅이 다시는 그 효력을 네게 주지 아니할 것이라"],"a":[3],"r":"본 6과 창 4:11,12"},{"n":34,"l":"6과 죄로 인해 우리는 어떻게 되었나요?","q":"시편 53편 1절에서 사람들이 하나님에 대하여 가장 많이 하는 말은 무엇인가요?","o":["하나님이 없다","하나님은 약하다","하나님은 전능하지 않다","하나님은 죽었다"],"a":[1],"r":"외 6과 시 53:1"},{"n":35,"l":"7과 우리에게 지금 가장 필요한 것은 무엇인가요?","q":"요한복음 4장에서 예수님과 대화를 나눈 사마리아 여인은 어느 지역에 사는 사람인가요?","o":["수가","가나","가사","수넴"],"a":[1],"r":"교 7과 50p"},{"n":36,"l":"7과 우리에게 지금 가장 필요한 것은 무엇인가요?","q":"예수님과 사마리아 여인의 대화에서 예수님이 주시는 물은 무엇이라고 하였나요?","o":["맑은 물","하늘에서 내리는 물","얼음 냉수와 같은 물","영원히 목마르지 않은 물"],"a":[4],"r":"교 7과 50p"},{"n":37,"l":"7과 우리에게 지금 가장 필요한 것은 무엇인가요?","q":"요한복음 4장에서 사마리아 여인이 예수님에게 요구한 것은 무엇인가요?","o":["영생의 말씀을 들려 달라","목마르지 않는 물을 달라","물을 길러 다시 오지 않게 해 달라","먹을 것을 주어 배고프지 않게 해 달라"],"a":[2,3],"r":"교 7과 50p"},{"n":38,"l":"7과 우리에게 지금 가장 필요한 것은 무엇인가요?","q":"요한복음 7장 37절에서 예수님은 누구든지 목마르거든 어떻게 하라고 하였나요?","o":["돈 없이 와서 사라","내게로 와서 마시라","쉬지 말고 기도하라","하나님 나라에 들어가라"],"a":[2],"r":"학 7과 17p"},{"n":39,"l":"7과 우리에게 지금 가장 필요한 것은 무엇인가요?","q":"요한복음 7장 38절에서 예수를 믿는 자들에게 그 배에서 무엇이 흘러나올 것이라고 하였나요?","o":["사랑의 힘","생명의 떡","영생의 길","생수의 강"],"a":[4],"r":"학 7과 17p"},{"n":40,"l":"8과 세상 속에서 우리는 누구일까요?","q":"베드로전서 1장에서 하나님의 부르심을 받은 하나님의 백성은 세상 속에서 어떤 존재로 살아간다고 하였 나요?","o":["종","제자","나그네","지혜로운 자"],"a":[3],"r":"교 8과 52p"},{"n":41,"l":"8과 세상 속에서 우리는 누구일까요?","q":"하나님께서 아브람에게 무엇을 보여주시면서 가라고 하였나요?","o":["금","땅","옷","별"],"a":[2],"r":"교 8과 54p"},{"n":42,"l":"8과 세상 속에서 우리는 누구일까요?","q":"창세기 12장 2절에서 하나님께서 아브람에게 약속하신 말씀이 아닌 것은 무엇인가요?","o":["큰 민족을 이룬다","창대하게 하신다","복이 될 것이다","장수하게 된다"],"a":[4],"r":"교 8과 54p"},{"n":43,"l":"8과 세상 속에서 우리는 누구일까요?","q":"하나님의 부르심을 받은 아브람은 무엇을 따라 갔다고 하였나요?","o":["하늘의 빛","구름 기둥","진리의 길","여호와의 말씀"],"a":[4],"r":"학 8과 19p"},{"n":44,"l":"8과 세상 속에서 우리는 누구일까요?","q":"하나님께 부르심을 받은 아브람과 같이 우리가 하나님의 부르심에 응답한 고백이 아닌 것은 무엇인가요?","o":["나는 세상에서 나의 이익을 위해서만 살겠다","나는 세상에 살지만 세상에 속하지 않은 나그네이다","나는 하나님께 부르심을 받아 천국에 속하게 되었다","나는 하나님의 말씀에 순종함으로 모든 이들의 복이 되겠다"],"a":[1],"r":"학 8과 19p"},{"n":45,"l":"8과 세상 속에서 우리는 누구일까요?","q":"베드로전서 1장 1, 2절에서 예수그리스도의 사도가 편지를 보낸 사람에 대해 말한 것이 잘못된 것은 무엇인가요?","o":["본도, 아시아와 비두니아에 흩어진 나그네이다.","본도, 갈라디아 갑바도기아의 지역 주민이다","하나님 아버지의 미리 아심을 따라 택하심을 받은 사람들이다","은혜와 평강이 더욱 많아지기를 축복받았다"],"a":[2],"r":"본 8과 벧전 1:1,2"},{"n":46,"l":"8과 세상 속에서 우리는 누구일까요?","q":"아브람이 하나님의 말씀에 순종하여 하란을 떠날 때의 나이가 몇 살인가요?","o":["45세","65세","75세","100세"],"a":[3],"r":"외 8과 창 12:4"},{"n":47,"l":"9과 하나님이 세우신 가정은 어떤 가정일까요?","q":"가정에 대한 설명이 잘못된 것은 무엇인가요?","o":["하나님께서 가장 먼저 세우신 공동체이다","한 남자와 한 여자가 결혼을 통해 이루어진다","부모의 연합 안에서 주신 자녀들로 구성된 공동체이다","가족들을 생각해서 혼자 결정하고 책임지는 공동체이다"],"a":[4],"r":"교 9과 58p"},{"n":48,"l":"9과 하나님이 세우신 가정은 어떤 가정일까요?","q":"시편 127편에서 집을 세우는 자의 수고가 헛되지 않으려면 어떻게 해야 하나요?","o":["여호와께서 세워 주셔야 한다","좋은 재료를 선택해야 한다","집을 세우는 땅이 견고해야 한다","건축자가 지혜가 있어야 한다"],"a":[1],"r":"교 9과 60p"},{"n":49,"l":"9과 하나님이 세우신 가정은 어떤 가정일까요?","q":"시편 127편에서 여호와께서 사랑하시는 자에게는 무엇을 주신다고 하였나요?","o":["물","잠","재산","열매"],"a":[2],"r":"교 9과 60p"},{"n":50,"l":"9과 하나님이 세우신 가정은 어떤 가정일까요?","q":"시편 127편에서 젊어서 낳은 자녀는 마치 용사의 손에 있는 무엇과 같이 힘이 된다고 하였나요?","o":["칼","창","갑옷","화살"],"a":[4],"r":"교 9과 60p"},{"n":51,"l":"9과 하나님이 세우신 가정은 어떤 가정일까요?","q":"우리 가정이 행복하기 위해서 내가 해야 할 일이 아닌 것은 무엇인가요?","o":["매일 행복한 가정이 되도록 기도한다","매일 가족들을 위해 칭찬해 준다","매일 가족들을 위해 사랑으로 섬겨 준다","매일 나의 성공을 위해 욕심을 낸다"],"a":[4],"r":"교 9과 61p"},{"n":52,"l":"9과 하나님이 세우신 가정은 어떤 가정일까요?","q":"시편 127편에서 하나님이 주시는 최고의 기업과 상급은 무엇인가요?","o":["영생","천국","자녀","면류관"],"a":[3],"r":"학 9과 21p"},{"n":53,"l":"10과 깨어진 가정은 누가 돌보시나요?","q":"고린도전서 7장에서 가르치는 내용이 아닌 것은 무엇인가요?","o":["고린도교회내 결혼과 성의 문제, 음행과 도덕적 혼란에 대한 성경적 가르침을 제시한다","믿는 자가 믿지 않는 자와 결혼 생활을 할 때 믿는 자의 뜻대로만 해야 한다고 가르친다","바울은 부부가 결혼하여 살아갈 때 서로 갈라서지 말라고 가르치고 있다","바울은 믿는 자는 믿지 않는 자가 함께 살기를 원하면 버리지 말아야 한다고 가르친다","바울은 믿는 자는 믿지 않는 자가 떠나기를 원하면 떠나도록 해야 한다고 가르친다"],"a":[2],"r":"교 10과 62p"},{"n":54,"l":"10과 깨어진 가정은 누가 돌보시나요?","q":"고린도전서 7장에서 믿는 자는 믿지 않는 배우자의 선택을 존중해 주어야 하지만 화평을 위해 해야 할 역할은 무엇인가요?","o":["믿지 않는 배우자를 구원하는 통로가 되어야 한다","믿지 않는 배우자에게 하나님의 말씀을 가르친다","믿지 않는 배우자가 따라올 수 있도록 설득한다","믿지 않는 배우자를 자랑하고 이끌어 준다"],"a":[1],"r":"교 10과 64p"},{"n":55,"l":"10과 깨어진 가정은 누가 돌보시나요?","q":"우리 가정을 위한 기도가 아닌 것은 무엇인가요?","o":["우리 가정을 지켜주세요.","온 가족이 건강하게 해 주세요","우리 가족이 말씀대로 살게 해 주세요","온 가족이 일하지 않고 살게 해 주세요"],"a":[4],"r":"교 10과 65p"},{"n":56,"l":"10과 깨어진 가정은 누가 돌보시나요?","q":"고린도전서 7장 10, 11절에서 하나님이 결혼한 자들에게 명하신 말씀은 무엇인가요?","o":["서로 사랑하라","미워하지 말라","갈라서지 말라","욕심을 내지 말라"],"a":[3],"r":"본 10과 고전 7:10,11"},{"n":57,"l":"10과 깨어진 가정은 누가 돌보시나요?","q":"잠언 17장 1절에 ‘마른 떡 한 조각만 있고도 화목하는 것이 제육이 집에 가득하고도 ( ) 것보다 나으니라’는 말씀에서 ( )안에 들어갈 말씀은 무엇인가요?","o":["속이는","도우는","다투는","풍성한"],"a":[3],"r":"외 10과 잠 17:1"},{"n":58,"l":"11과 가정은 누가 회복시켜 줄까요?","q":"하나님이 계획하신 결혼에 대한 말씀으로 창세기 2장 24절에 기록된 말씀이 아닌 것은 무엇인가요?","o":["사람이 부모를 떠나는 것이다","남편과 아내가 합하는 것이다","남편과 아내가 한 육체가 되는 것이다","남편과 아내가 함께 사는 것이다"],"a":[4],"r":"교 11과 66p"},{"n":59,"l":"11과 가정은 누가 회복시켜 줄까요?","q":"에베소서 5장에서 바울은 부부 관계의 모형으로 말한 관계는 무엇인가요?","o":["목자와 양","왕과 신하","포도나무와 가지","그리스도와 교회"],"a":[4],"r":"교 11과 66p"},{"n":60,"l":"11과 가정은 누가 회복시켜 줄까요?","q":"에베소서 5장에서 남편은 아내 사랑하기를 자신같이 하고 아내도 자기 남편을 어떻게 하라고 하였나요?","o":["섬기라","신뢰하라","존경하라","자랑하라"],"a":[3],"r":"교 11과 66p"},{"n":61,"l":"11과 가정은 누가 회복시켜 줄까요?","q":"에베소서 6장에서 자녀들은 부모에게 어떻게 하라고 하였나요?","o":["인사하라","순종하라","겸손하라","대접하라"],"a":[2],"r":"교 11과 66p"},{"n":62,"l":"11과 가정은 누가 회복시켜 줄까요?","q":"에베소서 6장에서 부모는 자녀를 노엽게 하지 말고 어떻게 하라고 하였나요?","o":["주의 교훈과 훈계로 양육하라","주의 사랑과 격려로 양육하라","주의 지식과 지혜로 양육하라","주의 율법과 말씀으로 가르치라"],"a":[1],"r":"학 11과 25p"},{"n":63,"l":"12과 하나님 나라 안에서 가족은 누구일까요?","q":"갈라디아서 3장에서 바울은 우리가 무엇으로 말미암아 그리스도 안에서 하나님의 자녀가 되었다고 하였 나요?","o":["행함","은혜","진리","믿음"],"a":[4],"r":"교 12과 70p"},{"n":64,"l":"12과 하나님 나라 안에서 가족은 누구일까요?","q":"누가복음 14장에서 예수님이 잔치를 베풀 때 초대하라고 말한 대상이 아닌 것은 무엇인가요?","o":["병든 자","연약한 자","가난한 자","장애가 있는 자"],"a":[2],"r":"교 12과 70p"},{"n":65,"l":"12과 하나님 나라 안에서 가족은 누구일까요?","q":"갈라디아서 3장 27절에서 바울은 어떤 사람들이 예수 안에서 하나라고 하였나요?","o":["구제에 힘쓰는 자","선한 삶을 사는 자","율법을 따르는 자","그리스도로 옷 입은 자"],"a":[4],"r":"교 12과 72p"},{"n":66,"l":"12과 하나님 나라 안에서 가족은 누구일까요?","q":"갈라디아서 3장 28절에 예수 안에서 하나된 대상으로 기록된 것이 아닌 것은 무엇인가요?","o":["종","여자","아이","헬라인"],"a":[3],"r":"학 12과 27p"},{"n":67,"l":"12과 하나님 나라 안에서 가족은 누구일까요?","q":"그리스도 예수 안에서 한 가족을 이루는 삶으로 말한 것이 아닌 것은 무엇인가요(롬 12:12,13)?","o":["악한 죄를 용서하라","소망 중에 즐거워하라","환난 중에 참으라","기도에 항상 힘쓰라","성도들의 쓸 것을 공급하라","손 대접하기를 힘쓰라"],"a":[1],"r":"외 12과 롬 12:12,13"},{"n":68,"l":"13과 하나님의 지혜를 어떻게 알고 배워야 할까요?","q":"시편 104편 30절에서 하나님은 온 세상을 창조하시고 새롭게 일하심을 누구를 통해 깨닫게 하신다고 하였나요?","o":["피조물","사람","성령","천사"],"a":[3],"r":"교 13과 76p"},{"n":69,"l":"13과 하나님의 지혜를 어떻게 알고 배워야 할까요?","q":"시편 104편 33절에서 우리는 언제까지 하나님의 지혜를 구하며 찬양한다고 하였나요?","o":["주야로","평생토록","세상이 멸망할 때까지","주의 재림 때까지"],"a":[2],"r":"교 13과 76p"},{"n":70,"l":"13과 하나님의 지혜를 어떻게 알고 배워야 할까요?","q":"시편 104편 29절에서 하나님이 그들의 호흡을 거두시면 그들은 죽어 무엇으로 돌아간다고 하였나요?","o":["물","풀","하늘","먼지"],"a":[4],"r":"교 13과 78p"},{"n":71,"l":"13과 하나님의 지혜를 어떻게 알고 배워야 할까요?","q":"시편 104편 24절에서 하나님이 무엇으로 세상을 지으셨다고 하였나요?","o":["지혜","호흡","생기","생명"],"a":[1],"r":"학 13과 29p"},{"n":72,"l":"13과 하나님의 지혜를 어떻게 알고 배워야 할까요?","q":"시편 104편 31절에서 여호와는 자신의 무엇으로 말미암아 즐거워하시리라고 하였나요?","o":["영의 일","행하시는 일","하늘나라의 일","영광을 받으시는 일"],"a":[2],"r":"본 13과 시 104:31"},{"n":73,"l":"13과 하나님의 지혜를 어떻게 알고 배워야 할까요?","q":"시편 19편 1절에서 ‘무엇이 하나님의 영광을 선포하고 궁창이 그의 손으로 하신 일을 나타낸다고 하였나요?","o":["땅이","세계가","천지가","하늘이"],"a":[4],"r":"외 13과 시 19:1"},{"n":74,"l":"14과 배운 것으로 왜 자랑하고 싶을까요?","q":"우리가 배움의 목적으로 삼아야 하는 이유가 아닌 것은 무엇인가?","o":["하나님을 영화롭게 한다","이웃을 유익하게 한다","하나님 나라의 확장을 위해 한다","단순한 자기계발과 자기 실현에만 열심을 내야 한다"],"a":[4],"r":"교 14과 80p"},{"n":75,"l":"14과 배운 것으로 왜 자랑하고 싶을까요?","q":"사람들이 바벨탑을 쌓은 이유가 아닌 것은 무엇인가요?","o":["하늘에 닿게 하려고","우리 이름을 내려고","사람들에게 자랑하려고","온 지면에 흩어짐을 면하려고"],"a":[3],"r":"교 14과 82p"},{"n":76,"l":"14과 배운 것으로 왜 자랑하고 싶을까요?","q":"하나님께서 바벨탑 쌓는 일을 막으시기 위해 행하신 일은 무엇인가요?","o":["언어를 혼잡하게 하심","온 지면에 흩어짐","전염병을 내리심","홍수가 나게 하심"],"a":[1,2],"r":"교 14과 82p"},{"n":77,"l":"14과 배운 것으로 왜 자랑하고 싶을까요?","q":"하나님의 자녀로 우리가 배워야 하는 이유가 아닌 것은 무엇인가요?","o":["하나님께 영광을 돌리기 위해서 배운다","다른 사람을 돕기 위해서 배운다","교회에 덕을 세우기 위해 배운다","교만하기 위해서 배운다"],"a":[4],"r":"교 14과 83p"},{"n":78,"l":"14과 배운 것으로 왜 자랑하고 싶을까요?","q":"사람들이 바벨탑을 쌓은 지역은 어디인가요?","o":["시온 평지","두날 평지","시날 평지","두온 평지"],"a":[3],"r":"본 14과 창 11:2"},{"n":79,"l":"14과 배운 것으로 왜 자랑하고 싶을까요?","q":"골로새서 2장 8절에 누가 철학과 헛된 속임수로 너희를 사로잡을까 주의하라 이것은 사람의 전통과 세상의 초등학문을 따름이요 ( ) 따름이 아니니라‘는 말씀에서 ( )안에 들어갈 말씀은 무엇인가요?","o":["말씀을","세상을","성령을","그리스도를"],"a":[4],"r":"외 14과 골 2:8"},{"n":80,"l":"15과 누구를 의지할 때 잘 배울 수 있나요?","q":"고린도전서 2장에서 말한 성령의 역할이 아닌 것은 무엇인가요?","o":["우리의 생각을 이끄시고 그리스도 안에서 자라나게 하신다","하나님이 우리에게 은혜로 주신 모든 혜택을 알게 하시고 깨닫게 하신디","선한 것을 분별하고 의의 열매를 맺어 하나님께 영광을 돌리는 삶을 살게 한다","우리가 지은 죄를 용서해 주시기 위해 십자가에서 피흘려 죽으셨다"],"a":[4],"r":"교 15과 84p"},{"n":81,"l":"15과 누구를 의지할 때 잘 배울 수 있나요?","q":"우리가 하나님의 생각을 알기 위해 근본적으로 필요한 것은 무엇인가요?","o":["성령의 도우심을 구한다","착한 일을 많이 한다","친구들과 대화를 한다","많은 책을 읽는다"],"a":[1],"r":"교 15과 86p"},{"n":82,"l":"15과 누구를 의지할 때 잘 배울 수 있나요?","q":"신령한 것을 설명하기 위해 필요한 것은 무엇인가요?","o":["교회 청소를 깨끗하게 한다","공부를 열심히 해야 한다","성령께서 가르쳐 주셔야 한다","온 가족이 화평해야 한다"],"a":[3],"r":"교 15과 86p"},{"n":83,"l":"15과 누구를 의지할 때 잘 배울 수 있나요?","q":"다음 보기에서 하나님의 자녀인 내가 속한 사람으로 말한 것은 무엇인가요?","o":["육에 속한 사람","죄에 속한 사람","율법에 속한 사람","하나님의 영에 속한 사람"],"a":[4],"r":"교 15과 86p"},{"n":84,"l":"15과 누구를 의지할 때 잘 배울 수 있나요?","q":"성령님을 의지해서 배우는 생활에 대해 말한 것이 잘못된 것은 무엇인가요?","o":["배운 것을 말할 때 나를 자랑하듯이 말한다","새로운 것을 배울 때 하나님의 지혜를 구한다","공부하기 전 성령님의 도우심을 구하며 기도한다","생각이 혼란스러울 때 성경을 기준 삼아 분별한다"],"a":[1],"r":"학 15과 34p"},{"n":85,"l":"15과 누구를 의지할 때 잘 배울 수 있나요?","q":"고린도전서 2장 12 – 14절에서 세상을 살아가는데 우리가 세상을 살아갈 때 성령을 통해서 배움을 얻는데 육에 속한 사람과 영에 속한 사람에 대한 설명으로 맞는 것은 무엇인가요?","o":["육에 속한 사람은 성령이 은혜로 주신 것들을 아는 사람이다","육에 속한 사람은 성령님의 일들을 어리석게 여긴다","영에 속한 사람은 성령님이 주시는 지혜로 분별한다","영에 속한 사람은 영적인 일을 분별하지 못한다"],"a":[2,3],"r":"본 15과 고전 2:12-14"},{"n":86,"l":"15과 누구를 의지할 때 잘 배울 수 있나요?","q":"고린도전서 2장 13절에서 영적인 일은 무엇으로 분별한다고 하였나요?","o":["사람의 말","영적인 것","자신의 판단","합리적인 지혜"],"a":[2],"r":"본 15과 고전 2:13"},{"n":87,"l":"16과 우리의 배움을 어떻게 사용할까요?","q":"고린도전서 8장 1절에서 온전한 지식은 사랑의 마음을 담아 이웃을 공감하며 무엇을 세운다고 하였나요?","o":["덕","집","명예","믿음"],"a":[1],"r":"교 16과 88p"},{"n":88,"l":"16과 우리의 배움을 어떻게 사용할까요?","q":"예수 그리스도에 대한 내용이 아닌 것은 무엇인가요?","o":["전능하신 하나님이시다","우리를 위해 이 땅에 오셨다","죽기까지 사랑을 실천하셨다","십자가의 죽으심을 깨닫게 하신다"],"a":[4],"r":"교 16과 88p"},{"n":89,"l":"16과 우리의 배움을 어떻게 사용할까요?","q":"고린도전서 8장에는 고린도교회의 어떤 문제에 대해서 기록하고 있나요?","o":["당파 싸움","결혼 문제","헌금문제","우상에게 바친 제물 문제"],"a":[4],"r":"교 16과 90p"},{"n":90,"l":"16과 우리의 배움을 어떻게 사용할까요?","q":"고린도교회 안에서 우상에게 바친 고기를 먹는 문제에 대해 사랑으로 행동을 하면 덕을 세우나 지식만 앞세우면 어떻게 된다고 하였나요(고전 8:1)?","o":["헛되다","교만해진다","해결되지 않는다","형식적인 삶이 된다"],"a":[2],"r":"학 16과 35p"},{"n":91,"l":"16과 우리의 배움을 어떻게 사용할까요?","q":"고린도전서 8장 9절에서 바울은 우리의 자유가 어떤 자들에게는 걸려 넘어지게 하는 것이 되기에 조심하 라고 하였나요?","o":["어리석은 자","믿지 않는 자","믿음이 약한 자","지혜가 없는 자"],"a":[3],"r":"본 16과 고전 8:9"},{"n":92,"l":"16과 우리의 배움을 어떻게 사용할까요?","q":"’너희 안에 이 마음을 품으라 곧 그리스도 예수의 마음이니라‘는 말씀이 기록된 성경구절은 무엇인가요?","o":["빌립보서 2장 5절","빌립보서 2장 15절","고린도전서 2장 5절","고린도전서 2장 15절"],"a":[1],"r":"외 16과 빌 2:5"},{"n":93,"l":"17과 세상을 향한 우리의 과제는 무엇일까요?","q":"하나님은 말씀으로 창조 세계를 마치시고 모든 것을 보시기에 어떠하시다고 하셨나요?","o":["심히 기쁘다","심히 좋았더라","아주 기쁘더라","아주 아름답더라"],"a":[2],"r":"교 17과 94p"},{"n":94,"l":"17과 세상을 향한 우리의 과제는 무엇일까요?","q":"하나님께서 형상을 따라 만든 우리에게 명령하신 것은 무엇인가요?","o":["땅을 정복하라","하늘에 충만하라","모든 생물을 창조하라","모든 생물을 다스리라"],"a":[1,4],"r":"교 17과 94p"},{"n":95,"l":"17과 세상을 향한 우리의 과제는 무엇일까요?","q":"하나님이 창설하신 동산에 대해 설명한 것이 잘못된 것은 무엇인가요?","o":["하나님이 지으신 사람들을 살게 하셨다","사람에게 동산에 있는 것들을 먹으며 살게 하셨다","동산 중앙에 선악을 알게 하는 나무를 두어 먹게 하였다","4개의 강은 하나님이 정한대로 흐르며 땅을 풍요롭게 하였다"],"a":[3],"r":"교 17과 94p"},{"n":96,"l":"17과 세상을 향한 우리의 과제는 무엇일까요?","q":"하나님께서 사람에게 동산을 잘 돌보도록 명령하신 사명은 무엇인가요(창 2:15)?","o":["경작하고 지키라","사랑하고 지키라","계획하고 가꾸라","사랑하고 가꾸라"],"a":[1],"r":"교 17과 94p"},{"n":97,"l":"17과 세상을 향한 우리의 과제는 무엇일까요?","q":"창세기 2장에 기록된 내용이 아닌 것은 무엇인가요?","o":["하나님이 동방의 에덴에 동산을 만드셨다","하나님이 그 땅에서 보기에 아름답게 하셨다","하나님이 사람에게 동산을 경작하며 지키라고 하셨다","하나님이 동산을 보시고 더 많이 만들라고 사람에게 말씀하셨다"],"a":[4],"r":"학 17과 37p"},{"n":98,"l":"17과 세상을 향한 우리의 과제는 무엇일까요?","q":"로마서 1장 20절에 기록된 말씀이 잘못된 것은 무엇인가요?","o":["창세로부터 그의 보이지 아니하는 것들","곧 그의 영원하신 능력과 신성이 나타나서","그가 만드신 만물에 분명히 보여 알려졌나니","그러므로 그들이 핑계하지 못할지니라"],"a":[2],"r":"외 17과 롬 1:20"},{"n":99,"l":"18과 우리가 세상에서 조심해야 할 것은 무엇인가요?","q":"요한일서 2장 6절에서 예수 안에 사는 우리는 어떻게 살아야 한다고 하였나요?","o":["예수가 행하신 대로 살아야 한다","지혜가 가르치는 대로 살아야 한다","마음이 가는 대로 살아야 한다","세상에 주는 가치대로 살아야 한다"],"a":[1],"r":"교 18과 98p"},{"n":100,"l":"18과 우리가 세상에서 조심해야 할 것은 무엇인가요?","q":"로마서 13장 13절에서 바울이 그리스도인으로 멀리해야 할 일로 말한 것이 아닌 것은 무엇인가요?","o":["방탕하고 술 취하기","다투고 시기하기","음란하고 호색하며 살기","비방하고 배신하기"],"a":[4],"r":"교 18과 100p"},{"n":101,"l":"18과 우리가 세상에서 조심해야 할 것은 무엇인가요?","q":"우리를 유혹하는 세상의 가치가 아닌 것은 무엇인가요?","o":["돈을 따라 가는 것","좋은 물건을 뽐내려는 것","친구의 음식을 탐내는 것","할 일을 성실하게 하는 것"],"a":[4],"r":"교 18과 101p"},{"n":102,"l":"18과 우리가 세상에서 조심해야 할 것은 무엇인가요?","q":"로마서 13장 14절에서 바울이 그리스도인으로 해야 할 일로 말한 것은 무엇인가요?","o":["편하면 행하고 힘들면 피한다","낮에는 영을, 밤에는 육을 위해 산다","예수 그리스도로 옷 입는다","정욕을 위해 육신의 일을 하지 않는다"],"a":[3,4],"r":"학 18과 39p"},{"n":103,"l":"18과 우리가 세상에서 조심해야 할 것은 무엇인가요?","q":"요한일서 2장 16절에서 세상의 가치로 말한 것이 아닌 것은 무엇인가요?","o":["육신의 쾌락","안목의 정욕","명예의 욕심","이생의 자랑"],"a":[3],"r":"본 18과 요일 2:16"},{"n":104,"l":"18과 우리가 세상에서 조심해야 할 것은 무엇인가요?","q":"잠언 4장 27절에 우리의 신체 중 악에서 떠나게 하라고 한 것은 무엇인가요?","o":["손","발","눈","머리"],"a":[2],"r":"외 18과 잠 4:27"},{"n":105,"l":"19과 우리는 세상에서 어떤 영향력을 끼치나요?","q":"마태복음 5장에서 예수님은 우리가 세상의 무엇과 무엇이 되어야 한다고 하였나요?","o":["빛과 소금","빛과 향기","물과 소금","물과 향기"],"a":[1],"r":"교 19과 102p"},{"n":106,"l":"19과 우리는 세상에서 어떤 영향력을 끼치나요?","q":"소금은 부패를 방지하고 지연시키며 음식의 맛을 내는데 이 내용의 성경 구절이 아닌 것은 무엇인가요?","o":["출애굽기 30장 35절","에스겔 43장 24절","이사야 40장 25절","욥기 6장 6절"],"a":[3],"r":"교 19과 102p"},{"n":107,"l":"19과 우리는 세상에서 어떤 영향력을 끼치나요?","q":"요한일서 1장 5절은 어떤 하나님에 대해서 말씀하고 있나요?","o":["빛이신 하나님","영광의 하나님","신실한 하나님","생명의 하나님"],"a":[1],"r":"교 19과 102p"},{"n":108,"l":"19과 우리는 세상에서 어떤 영향력을 끼치나요?","q":"소금의 역할 중 마태복음 5장 13절에 기록된 소금의 능력은 무엇인가요?","o":["세상을 창조하는 능력","세상에 맛을 내는 능력","세상에 빛을 내는 능력","세상을 놀라게 하는 능력"],"a":[2],"r":"학 19과 41p"},{"n":109,"l":"19과 우리는 세상에서 어떤 영향력을 끼치나요?","q":"에베소서 5장 9절에서 빛의 열매로 말한 것이 아닌 것은 무엇인가요?","o":["착함","의로움","진실함","감사함"],"a":[4],"r":"본 19과 엡 5:9"},{"n":110,"l":"19과 우리는 세상에서 어떤 영향력을 끼치나요?","q":"우리는 세상에 살지만 세상의 악을 따르지 않고 무엇을 통해 하나님께 영광을 돌리라고 하였나요(마 5:16)?","o":["전도","세례","착한 행실","회개의 기도"],"a":[3],"r":"외 19과 마 5:19"},{"n":111,"l":"20과 예배를 통해 하나님을 닮아갈 수 있을까요?","q":"하나님 나라의 세계관 형성을 위한 확고한 터전으로 가장 우선 되는 방식은 무엇인가요?","o":["예배","봉사","전도","희생"],"a":[1],"r":"교 20과 108p"},{"n":112,"l":"20과 예배를 통해 하나님을 닮아갈 수 있을까요?","q":"예배에 대한 설명이 잘못된 것은 무엇인가요?","o":["하나님과 관계성을 세우고 하나님 나라의 가치를 몸으로 경험하게 된다","하나님의 임재를 경험하며 세상을 이해하고 대응하는 방식을 배우게 된다","하나님이 원하시는 삶의 방식을 결단하고 점점 그리스도를 닮아가게 된다","하나님의 백성으로 온전한 성경적 세계관을 형성하도록 돕는 실천의 장이다","하나님의 자녀에게 들어야 할 지식이나 정보를 습득하는 시간이 된다"],"a":[5],"r":"교 20과 108p"},{"n":113,"l":"20과 예배를 통해 하나님을 닮아갈 수 있을까요?","q":"고린도후서 3장 18절에 우리가 예배에서 하나님의 영광을 경험하면 내 모습이 하나님의 무엇을 닮아 변하는 것을 보았다고 하였나요?","o":["공의","전능","형상","거룩"],"a":[3],"r":"교 20과 110p"},{"n":114,"l":"20과 예배를 통해 하나님을 닮아갈 수 있을까요?","q":"예배 생활에 있어서 고쳐야 할 생활은 무엇인가요?","o":["예배시간에 친구들과 함께 놀러 간다","즐거운 마음으로 예배에 참석한다","열심으로 하나님께 찬양을 드린다","진심으로 회개의 기도를 드린다","하나님의 말씀을 사모하며 듣는다","예수님을 닮은 모습으로 살아간다"],"a":[1],"r":"교 20과 111p"},{"n":115,"l":"20과 예배를 통해 하나님을 닮아갈 수 있을까요?","q":"히브리서 12장 28절에서 우리는 어떤 나라를 받게 되었다는 비밀을 알게 되었나요?","o":["새 예루살렘","하나님의 나라","썩지 않을 나라","흔들리지 않는 나라"],"a":[4],"r":"학 20과 43p"},{"n":116,"l":"20과 예배를 통해 하나님을 닮아갈 수 있을까요?","q":"히브리서 12장 28절에서 예배 속에서 변화의 비밀을 발견한 우리는 하나님을 닮아가며 무엇과 무엇으로 하나님을 기쁘시게 섬겨야 한다고 하였나요?","o":["경건함과 정결함","경건함과 두려움","겸손함과 정결함","겸손함과 두려움"],"a":[2],"r":"학 20과 43p"},{"n":117,"l":"21과 우리는 누구에게 예배하나요?","q":"시편 115편에서 말한 우상에 대한 내용이 아닌 것은 무엇인가요?","o":["입이 있어도 말하지 못한다","눈이 있어도 보지 못한다","귀가 있으나 듣지 못한다","코가 있어도 냄새 맡지 못한다","손이 있으나 움직이지 못한다","발이 있으나 걷지 못한다","목구멍이 있어도 소리내지 못한다","머리가 있어도 생각하지 못한다"],"a":[8],"r":"교 21과 112p"},{"n":118,"l":"21과 우리는 누구에게 예배하나요?","q":"다음 설명이 잘못된 것은 무엇인가요?","o":["예배는 하나님께 마음과 삶을 다해 온전한 영광을 올려드리는 것이다","우상은 아무 영향력을 행사할 수 없는 죽은 존재이다","우상은 무엇이든지 하나님보다 더 크게 여기고 의지하는 것이다","신은 세상에서 다양하게 존재하기에 마음이 가는 것 하나를 믿으면 된다"],"a":[4],"r":"교 21과 112p"},{"n":119,"l":"21과 우리는 누구에게 예배하나요?","q":"시편 115편에서 우상은 누가 만든 것이라고 하였나요?","o":["스스로 생겨난 것이다","마귀가 말로 만든 것이다","사람이 손으로 만든 것이다","천사가 타락해 만들어진 것이다"],"a":[3],"r":"교 21과 114p"},{"n":120,"l":"21과 우리는 누구에게 예배하나요?","q":"시편 115편에서 우상은 무엇으로 만든 것이라고 하였나요?","o":["금과 은","은과 돌","돌과 나무","나무와 금"],"a":[1],"r":"학 21과 45p"},{"n":121,"l":"21과 우리는 누구에게 예배하나요?","q":"시편 115편에서 우상을 만드는 사람들과 의지하는 사람들은 결국 어떻게 된다고 하였나요?","o":["벌을 받게 된다","재앙을 받게 된다","멸망을 당하게 된다","우상과 똑같이 변하여 간다"],"a":[4],"r":"외 21과 시 115:8"},{"n":122,"l":"22과 우리는 어떻게 진실한 예배자로 살 수 있을까요?","q":"이사야가 거룩하신 하나님을 만난 후 회개하며 자백한 말은 무엇인가요?","o":["화로다 나여 망하게 되었도다","내가 거룩한 삶을 살게 되었도다","두렵다 내가 벌을 받게 되었도다","하나님을 더 사랑하게 되었도다"],"a":[1],"r":"교 22과 116p"},{"n":123,"l":"22과 우리는 어떻게 진실한 예배자로 살 수 있을까요?","q":"사도 바울은 영적 예배로 너희 몸을 하나님께 어떻게 하라고 하였나요?","o":["더 많이 희생하고 헌신하라","거룩한 산 제물로 드리라","힘과 마음을 다하여 찬양하라","정결하게 하고 영광을 돌리라"],"a":[2],"r":"교 22과 116p"},{"n":124,"l":"22과 우리는 어떻게 진실한 예배자로 살 수 있을까요?","q":"사도 바울은 예배자로서 세상과 구별된 삶을 살기 위해 요구하는 것이 아닌 것은 무엇인가요(롬 12:2)?","o":["세상의 가치를 본받지 말아야 한다","마음을 새롭게 함으로 변화를 받아야 한다","하나님의 뜻을 분별해야 한다","생각나는 대로 말과 행동을 한다"],"a":[4],"r":"교 22과 116p"},{"n":125,"l":"22과 우리는 어떻게 진실한 예배자로 살 수 있을까요?","q":"하나님께 드려지는 예배자의 합당한 삶이 아닌 것은 무엇인가요?","o":["예배 시간에 들은 말씀을 가족과 나누기","주 안에서 부모님의 말씀에 기쁘게 순종하기","말씀을 듣고 잘못한 행동이 있으면 회개 기도하기","예배 시간에 좋아하는 게임이나 유트브를 보고 따라하기"],"a":[4],"r":"학 22과 48p"},{"n":126,"l":"22과 우리는 어떻게 진실한 예배자로 살 수 있을까요?","q":"이사야 선지자가 거룩하신 하나님을 보고 ‘나는 입술이 부정한 사람이’라고 회개하였을 때 하나님이 행하신 일이 아닌 것은 무엇인가요?","o":["사명을 주셨다","죄를 사하여 주셨다","빛을 비추어 주셨다","제단에 핀 숯을 입에 대었다"],"a":[3],"r":"본 22과 사 6:6-8"},{"n":127,"l":"22과 우리는 어떻게 진실한 예배자로 살 수 있을까요?","q":"이사야 6장 13절에서 하나님이 이스라엘을 심판하시지만 나무가 베임을 당하면 그루터기가 남듯이 거룩한 씨를 남겨 두실 것이라고 하셨는데 자연적 비유로 사용된 두 나무는 무엇인가요?","o":["밤나무와 무화과나무","밤나무와 상수리나무","감나무와 무화과나무","감나무와 상수리나무"],"a":[2],"r":"본 22과 사 6:13"},{"n":128,"l":"종려주일과 예수님의 고난, 우리에게 무엇을 주셨나요?","q":"베드로전서 2장에서 예수님이 받으신 고난과 모범에 대해 말한 것이 아닌 것은 무엇인가요?","o":["죄를 범하지 않으심","입에 거짓도 없으심","욕을 당하되 욕하지 않으심","고난을 당하되 위협하지 않으심","헐벗고 먹지를 못하심"],"a":[5],"r":"교 종려 120p"},{"n":129,"l":"종려주일과 예수님의 고난, 우리에게 무엇을 주셨나요?","q":"베드로전서 2장 20절에서 선을 행함으로 고난을 받으시고 끝까지 참으심은 하나님 앞에 어떠한 일인가요?","o":["슬픈 일","힘든 일","자랑할 일","아름다운 일"],"a":[4],"r":"교 종려 120p"},{"n":130,"l":"종려주일과 예수님의 고난, 우리에게 무엇을 주셨나요?","q":"그리스도의 죽음에 대해 설명한 것이 잘못된 것은 무엇인가요?","o":["우리의 죄를 용서하시기 위한 죽음이시다","우리를 살리시기 위한 의로운 사랑이시다","모든 사람이 가야 할 죽음을 알리는 일이다","하나님께로 돌아가게 하는 유일한 방편이다"],"a":[3],"r":"교 종려 120p"},{"n":131,"l":"종려주일과 예수님의 고난, 우리에게 무엇을 주셨나요?","q":"예수님께서 모든 고난을 받고 참으신 이유가 무엇인가요?","o":["복을 받으시기 위함이다","우리를 구원하시기 위함이다","힘을 보여주시기 위함이다","사람들에게 높임 받기 위함이다"],"a":[2],"r":"교 종려 122p"},{"n":132,"l":"종려주일과 예수님의 고난, 우리에게 무엇을 주셨나요?","q":"베드로전서 2장 21절 – 25절에서 예수님이 보여주신 고난을 통해 얻는 유익과 절수가 잘못 연결된 것은 무엇인가요?","o":["사랑을 배움 – 베드로전서 2장 21절","섬김을 배움 - 베드로전서 2장 21, 22절","인내를 배움 - 베드로전서 2장 23절","깨끗함을 얻게 됨 - 베드로전서 2장 24절","용서를 받음 - 베드로전서 2장 25절","참된 평안을 얻음 - 베드로전서 2장 25절"],"a":[5],"r":"학 종려 50p"},{"n":133,"l":"종려주일과 예수님의 고난, 우리에게 무엇을 주셨나요?","q":"베드로전서 2장 21절에서 “...그리스도도 너희를 위하여 ( )을 받으사 너희에게 본을 끼쳐 그 자취를 ( )오게 하려... ”라는 말씀에서 ( )안에 들어갈 말씀은 무엇인가요?","o":["고난 – 따라","고난 – 쫓아","사랑 - 따라","사랑 - 쫓아"],"a":[1],"r":"외 종려 벧전 2:21"},{"n":134,"l":"부활주일과 예수님의 부활, 우리에게 어떤 의미인가요?","q":"막달라 마리아가 빈 무덤을 보고 누구에게 그 소식을 전했나요?","o":["베드로와 동네 사람","베드로와 다른 제자","가족들과 동네 사람","가족들과 다른 제자"],"a":[2],"r":"교 부활 124p"},{"n":135,"l":"부활주일과 예수님의 부활, 우리에게 어떤 의미인가요?","q":"베드로와 다른 제자들이 달려가 빈 무덤을 보았을 때 그 안에 있었던 것은 무엇인가요?","o":["못과 세마포","못과 십자가","수건과 세마포","수건과 십자가"],"a":[3],"r":"교 부활 124p"},{"n":136,"l":"부활주일과 예수님의 부활, 우리에게 어떤 의미인가요?","q":"막달라 마리아가 무덤에 왔을 때 돌은 어떻게 되었나요?","o":["돌이 그대로 있었다","돌이 깨져 있었다","돌이 옮겨져 있었다","돌이 작아져 있었다"],"a":[3],"r":"교 부활 126p"},{"n":137,"l":"부활주일과 예수님의 부활, 우리에게 어떤 의미인가요?","q":"다음 부활에 대한 설명이 잘못된 것은 무엇인가요?","o":["세상의 마지막으로 모든 것의 끝이 도래하였음을 알려 준다","예수님과 같이 새로운 생명을 얻을 수 있는 기쁜 사건이다","죽음을 이기시고 살아나셔서 모든 믿는 자의 산 소망을 주셨다","빈 무덤은 예수님이 다시 살아나신 부활의 확실한 증거이다"],"a":[1],"r":"교 부활 124, 126p"},{"n":138,"l":"부활주일과 예수님의 부활, 우리에게 어떤 의미인가요?","q":"막달라 마리아가 빈 무덤을 발견한 것은 언제인가요?","o":["금요일 날","안식일 날","안식일 전날","안식 후 첫날"],"a":[4],"r":"학 부활 51p"},{"n":139,"l":"어린이주일과 하나님을 경외하면 무엇이 달라질까요?","q":"잠언 1장 7절에서 미련한 자는 무엇을 멸시한다고 하였나요?","o":["지혜와 훈계","믿음과 사랑","경건과 헌신","순종과 섬김"],"a":[1],"r":"교 어린 128p"},{"n":140,"l":"어린이주일과 하나님을 경외하면 무엇이 달라질까요?","q":"잠언 1장 10 – 15절에서 부모의 가르침을 따를 때 자녀들이 얻을 유익이 아닌 것은 무엇인가요?","o":["악에서 멀어진다","죄를 경계하게 된다","노력하지 않아도 된다","하나님을 올바르게 따라가게 된다"],"a":[3],"r":"교 어린 128p"},{"n":141,"l":"어린이주일과 하나님을 경외하면 무엇이 달라질까요?","q":"잠언 1장 7절에 기록된 ‘여호와를 경외하라’는 말씀을 설명한 것은 무엇인가요?","o":["하나님의 말씀대로 살아가는 것이다","사람들을 하나님께로 인도하는 것이다","하나님이 원하시는 것을 가지는 것이다","사람들에게 인생의 삶을 가르치는 것이다"],"a":[1],"r":"교 어린 130p"},{"n":142,"l":"어린이주일과 하나님을 경외하면 무엇이 달라질까요?","q":"잠언 1장 8 – 15절에서 여호와를 경외하는 자의 삶을 기록한 절수와 말씀이 잘못 연결된 것은 무엇인 가요?","o":["8절 – 아비의 훈계를 들으라","10절 – 악한 자를 따르지 말라","12절 – 어려운 일 당한 자를 도와주라","15절 – 악으로 달려가는 길에 다니지 말라"],"a":[3],"r":"학 어린 53p"},{"n":143,"l":"어린이주일과 하나님을 경외하면 무엇이 달라질까요?","q":"잠언 1장 19절에서 이익을 탐하는 모든 자의 길은 다 어떻게 된다고 하였나요?","o":["손해를 보게 된다","생명을 잃게 된다","죄의 댓가를 받게 된다","없신여김을 받게 된다"],"a":[2],"r":"본 어린 잠 1:19"},{"n":144,"l":"나라사랑주일과 우리나라의 주인은 누구인가요?","q":"로마서 13장에서 하나님의 백성으로서 모든 권세와 통치가 누구로부터 정해진 것이라고 하였나요?","o":["국민","하나님","나라 정부","유엔 총회"],"a":[2],"r":"교 나라 132p"},{"n":145,"l":"나라사랑주일과 우리나라의 주인은 누구인가요?","q":"로마서 13장에서 권력을 가진 자들이 두려워해야 할 일은 무엇이라고 하였나요?","o":["악을 행하는 것","인격이 없는 것","선을 행하는 것","능력이 없는 것"],"a":[1],"r":"교 나라 132p"},{"n":146,"l":"나라사랑주일과 우리나라의 주인은 누구인가요?","q":"하나님이 권세 자들에게 통치권을 주셨는데 우리가 권세 자들에 대하는 모습으로 말한 것이 아닌 것은 무엇인가요?","o":["조세를 받을 자에게 조세를 바친다","관세를 받을 자에게 관세를 바친다","두려워할 자를 두려워한다","존경할 자를 존경하라","보복을 당하기 전 복종하라"],"a":[5],"r":"교 나라 134p"},{"n":147,"l":"나라사랑주일과 우리나라의 주인은 누구인가요?","q":"우리나라와 국가 지도자들에 대해 우리가 가져야 할 것으로 말한 것이 아닌 것은 무엇인가요?","o":["우리가 속한 나라와 지도자는 하나님께 속하였다","하나님은 나라를 다스리실 때 지도자를 세워서 일하신다","하나님을 사랑하는 마음으로 나라를 지키고 지도자는 내 마음에 따라 대한다","하나님이 나라와 지도자들의 주인이심을 믿고 나라와 지도자들을 위해 기도해야 한다"],"a":[3],"r":"교 나라 134p"},{"n":148,"l":"나라사랑주일과 우리나라의 주인은 누구인가요?","q":"로마서 13장 4절에서 하나님의 사역자가 된 지도자들은 우리에게 무엇을 베푸는 자라고 하였나요?","o":["화","돈","힘","선"],"a":[4],"r":"학 나라 55p"},{"n":149,"l":"23과 우연일까요? 의도일까요?","q":"창조에 대한 설명이 잘못된 것은 무엇인가요?","o":["우연한 기회에 창조 되었다","하나님이 목적에 따라 창조 하셨다","철저한 질서 속에서 창조 되었다","완벽한 계획 안에서 창조되었다"],"a":[1],"r":"교 23과 23p"},{"n":150,"l":"23과 우연일까요? 의도일까요?","q":"시편 14편 1절에서 어리석은 자는 누가 없다고 하나요?","o":["신","친구","천사","하나님"],"a":[4],"r":"교 23과 24p"},{"n":151,"l":"23과 우연일까요? 의도일까요?","q":"창세기 1장 2절에서 하나님이 땅에 질서를 세우기 전에 모습은 어떠하였나요?","o":["혼란과 공허함","혼란과 암흑함","혼돈과 공허함","혼돈과 암흑함"],"a":[3],"r":"교 23과 24p"},{"n":152,"l":"23과 우연일까요? 의도일까요?","q":"하나님은 보이지 않으시지만 분명하게 계시는 하나님에 대해 우리가 고백해야 할 말이 아닌 것은 무엇인가요?","o":["눈에 보이지 않는 하나님을 믿을래","하나님은 보이지 않지만 우리를 위해 일하고 계셔","나를 보내신 하나님의 뜻 안에서 삶의 가치를 찾을래","인생은 하나님의 선하신 계획 속에서 시작된 선물이야","인생의 모든 일을 내가 결정해야 하기에 혼자 고민할거야"],"a":[5],"r":"교 23과 24, 25p"},{"n":153,"l":"23과 우연일까요? 의도일까요?","q":"요한복음 1장 3절에서 삼위의 하나님이 지으신 것이 무엇이라고 하였나요?","o":["죄","만물","죽음","사탄"],"a":[2],"r":"외 23과 요 1:3"},{"n":154,"l":"24과 절대로 변하지 않는 ‘진짜 정답’이 있을까요?","q":"사람이 스스로 옳다고 여기는 길이 멸망으로 이끌 수 있음을 경고한 잠언 14장 12절에 ‘어떤 길은 사람이 보기에 바르나 필경은 어떤 길이라’고 하였나요?","o":["고난의 길","사망의 길","원치 않는 길","많은 사람이 가는 길"],"a":[2],"r":"교 24과 26p"},{"n":155,"l":"24과 절대로 변하지 않는 ‘진짜 정답’이 있을까요?","q":"하나님의 말씀은 변하지 않는 삶의 기준이 되는 말씀으로 시편 119편 89절의 말씀은 무엇인가요?","o":["여호와여 주의 말씀은 영원히 하늘에 굳게 섰사오며","주의 율례들에서 떠나는 자는 주께서 다 멸시하셨으니","나의 고난이 매우 심하오니 여호와여 주의 말씀대로 나를 살아나게 하소서","내가 주의 말씀을 지키려고 발을 금하여 모든 악한 길로 가지 아니하였사오며"],"a":[1],"r":"교 24과 26p"},{"n":156,"l":"24과 절대로 변하지 않는 ‘진짜 정답’이 있을까요?","q":"사사기 21장에서 ‘왕이 없으므로 사람이 각자 어떻게 살았다’고 하였나요?","o":["공동체가 정한 대로","사사가 말한 대로","소견에 옳은 대로","계획을 세운 대로"],"a":[3],"r":"교 24과 28p"},{"n":157,"l":"24과 절대로 변하지 않는 ‘진짜 정답’이 있을까요?","q":"디모데후서 4장 4절에서 마지막 때 사람들은 ‘그 귀를 어디에서 돌이켜 허탄한 이야기를 따르리라고 하였나요?","o":["진리","세상","친구","바른 생활"],"a":[1],"r":"교 24과 28p"},{"n":158,"l":"24과 절대로 변하지 않는 ‘진짜 정답’이 있을까요?","q":"디모데후서 4장 3절에서 마지막 때에 귀가 가려워서 어떤 사람을 많이 둔다고 하였나요?","o":["돈이 많은 부자","지혜가 있는 이웃","좋은 말을 하는 사람","자기의 사욕을 따를 스승"],"a":[4],"r":"교 24과 28p"},{"n":159,"l":"24과 절대로 변하지 않는 ‘진짜 정답’이 있을까요?","q":"다음 보기에서 절대 진리로 믿어야 할 말씀이 아닌 것은 무엇인가요?","o":["진리이신 예수님을 믿어야만 구원을 받는다","시대가 변해도 하나님의 말씀은 변하지 않는다","파란색보다는 빨간색이 훨씬 더 예쁜 색깔이다","하나님이 세상을 창조하셨고 지금도 다스리고 계신다"],"a":[3],"r":"학 24과 8p"},{"n":160,"l":"24과 절대로 변하지 않는 ‘진짜 정답’이 있을까요?","q":"사사기 21장 25절과 디모데후서 4장 3, 4절에서 당시 사람들의 상황과 다른 내용은 무엇인가요?","o":["사람이 각기 자기의 소견에 옳은 대로 행함","사람이 바른 교훈을 받지 아니하며","사람이 그 귀를 열어서 진리를 따름","귀가 가리워지고 진리에서 돌이켜 허탄한 이야기를 따름"],"a":[3],"r":"본 24과 삿 2:25, 딤후 4:3~4"},{"n":161,"l":"24과 절대로 변하지 않는 ‘진짜 정답’이 있을까요?","q":"요한복음 14장 6절은 영원한 진리의 말씀으로 예수님이 자신을 소개한 말씀이 아닌 것은 무엇인가요?","o":["길","진리","생명","구원"],"a":[4],"r":"외 24과 요 14:6"},{"n":162,"l":"25과 나만 생각해도 될까요?","q":"사도행전 2장 44 – 47절에서 초대교회 공동체가 보여준 생활이 아닌 것은 무엇인가요?","o":["성도들은 모든 것을 함께 나누었다","날마다 마음을 같이 하였다","교제하며 서로를 섬겼다","성령 받기를 기도했다"],"a":[4],"r":"교 25과 30p"},{"n":163,"l":"25과 나만 생각해도 될까요?","q":"누가복음 10장에 기록된 사마리아인은 예루살렘에서 어디로 내려가는 길에서 강도 만난 자를 도와 주었 나요?","o":["여리고","나사렛","고모라","사마리아"],"a":[1],"r":"교 25과 31p"},{"n":164,"l":"25과 나만 생각해도 될까요?","q":"선한 사마리아인의 비유에서 제사장과 레위인은 강도 만난 자를 보고 어떻게 하였나요?","o":["돈을 주었다","기도해 주었다","피하여 지나갔다","말씀을 전하였다"],"a":[3],"r":"교 25과 32p"},{"n":165,"l":"25과 나만 생각해도 될까요?","q":"우리가 내가 아닌 우리 공동체에서 해야 할 일이 아닌 것은 무엇인가요?","o":["우리 함께 먹을까 제안하기","친구가 이야기 할 때 잘 들어주기","부모님께 ’먼저 드세요‘라고 말하기","공동체 활동을 할 때 혼자서만 생활하기"],"a":[4],"r":"교 25과 32,33p"},{"n":166,"l":"25과 나만 생각해도 될까요?","q":"선한 사마리아인의 비유에서 사마리아인이 강도 만난 자를 위해 한 일이 아닌 것은 무엇인가요?","o":["그 사람을 보고 불쌍히 여겼다","기름과 포도주로 상처를 지료해 주었다","자기 짐승에 태워 주막으로 데려다 주었다","옷을 입혀 주고 강도를 끝까지 쫒아가 붙잡았다","데나리온 둘을 주막 주인에게 주며 끝까지 돌보았다"],"a":[4],"r":"학 25과 9p"},{"n":167,"l":"25과 나만 생각해도 될까요?","q":"선한 사마리아인의 비유에서 예수님이 ’세 사람 중에 누가 강도 만난 자의 이웃이 되겠느냐‘고 율법사에게 물을 때 무엇이라고 대답 하였나요?","o":["유대인들이니이다","자비를 베푼 자니이다","자기를 지킨 자니이다","가르쳐 준 자니이다"],"a":[2],"r":"본 25과 눅 10:36,37"},{"n":168,"l":"26과 많이 사서 가지면 만족할까요?","q":"마태복음 6장에서 한 사람이 두 주인을 섬기지 못할 것이니... 너희가 무엇과 무엇을 겸하여 섬길 수 없다고 하였나요?","o":["하나님","재물","세상","권세"],"a":[1,2],"r":"교 26과 34p"},{"n":169,"l":"26과 많이 사서 가지면 만족할까요?","q":"마태복음 6장에서 보물을 땅에 쌓아 두지 말아야 하는 이유가 아닌 것은 무엇인가요?","o":["도둑질을 한다","도둑이 구멍을 뚫는다","잊어버리게 된다","좀과 동록이 해한다"],"a":[3],"r":"교 26과 36p"},{"n":170,"l":"26과 많이 사서 가지면 만족할까요?","q":"마태복음 6장에서 보물을 어디에 쌓아 두라고 하였나요?","o":["땅","하늘","바다","항아리"],"a":[2],"r":"교 26과 36p"},{"n":171,"l":"26과 많이 사서 가지면 만족할까요?","q":"다음 보기에서 우리가 살 수 있는 것은 무엇인가요?","o":["하나님을 향한 믿음","부모의 사랑","영원한 생명","맛있는 음식"],"a":[4],"r":"학 26과 12p"},{"n":172,"l":"26과 많이 사서 가지면 만족할까요?","q":"마태복음 6장 22절에서 얼굴의 기관에서 무엇이 몸의 등불이라고 하였나요?","o":["눈","코","입","귀"],"a":[1],"r":"본 26과 마 6:22"},{"n":173,"l":"26과 많이 사서 가지면 만족할까요?","q":"전도서 5장 10절에서 풍요를 사랑하는 자는 무엇으로 만족하지 아니한다고 하였나요?","o":["명예","가족","소득","건강"],"a":[3],"r":"외 26과 전 5:10"},{"n":174,"l":"27과 생명은 누가 주신 선물인가요?","q":"시편 127편 3절에서 자식은 여호와의 기업이요 태의 열매는 무엇이라고 하였나요?","o":["힘","방패","상급","재산"],"a":[3],"r":"교 27과 40p"},{"n":175,"l":"27과 생명은 누가 주신 선물인가요?","q":"생명은 하나님의 뜻과 주권 안에서 주어지는 것으로 예레미야 1장 5절에서 우리를 모태에 짓기 전에 알았고 언제 성별 하였다고 하였나요?","o":["모태에서","알기 전에","태어난 후에","배에서 나오기 전에"],"a":[4],"r":"교 27과 40p"},{"n":176,"l":"27과 생명은 누가 주신 선물인가요?","q":"시편 139편 13 - 16절에 기록된 말씀과 절수가 잘못 연결된 것은 무엇인가요?","o":["13절 – 하나님이 나를 만드셨어요","14절 – 하나님이 나를 특별하게 만드셨어요","15절 – 하나님은 나를 다 보고 계셨어요","16절 – 하나님은 내가 태어나기 전부터 계획이 있었어요","16절 – 하나님이 나에게 건강의 복을 주셨어요"],"a":[5],"r":"교 27과 42p"},{"n":177,"l":"27과 생명은 누가 주신 선물인가요?","q":"나의 생명에 대한 설명이 잘못된 것은 무엇인가요?","o":["생명을 주신 하나님께 감사해요","생명이 내게 있기에 마음대로 해요","생명은 하나님께서 주신 선물이예요","생명을 소중하게 여기고 존중해요"],"a":[2],"r":"학 27과 14p"},{"n":178,"l":"27과 생명은 누가 주신 선물인가요?","q":"시편 139편 16절에서 나를 위하여 정한 날이 하루도 되기 전에 어디에 다 기록이 되었나요?","o":["주의 책","율법 책","창조의 책","하늘의 책"],"a":[1],"r":"본 27과 시 139:16"},{"n":179,"l":"27과 생명은 누가 주신 선물인가요?","q":"시편 139편 13절에 ’주께서 내 ( ) 지으시며 나의 모태에서 나를 만드셨나이다‘라는 말씀에서 ( ) 안에 들어갈 말씀은 무엇인가요?","o":["손을","마음을","내장을","육체를"],"a":[3],"r":"외 27과 시 139:13"},{"n":180,"l":"28과 나의 시작과 끝은 누구의 손에 달려 있을까요?","q":"사람들은 사는 동안 절망과 두려움을 갖게 될 때 우리가 가져야 할 생각이 아닌 것은 무엇인가요?","o":["성경은 인간의 고통과 연약함을 외면한다","성경은 생명에 대한 하나님의 주권을 선포한다","생명의 시작과 끝이 하나님의 손에 달려 있다","교회는 정죄가 아닌 공감과 동행, 회복의 길을 제시해야 한다"],"a":[1],"r":"교 28과 45p"},{"n":181,"l":"28과 나의 시작과 끝은 누구의 손에 달려 있을까요?","q":"시편 42편 11절에서 내 영혼아 네가 어찌하여 낙심하며 어찌하여 내 속에서 불안해 하는가 너는 하나님께 무엇을 두라고 하였나요?","o":["소망","마음","열심","믿음"],"a":[1],"r":"교 28과 44p"},{"n":182,"l":"28과 나의 시작과 끝은 누구의 손에 달려 있을까요?","q":"사울 왕이 어디에서 블레셋과 싸우다가 화살에 맞아 심한 상처를 입었나요?","o":["갈멜산","호렙산","길보아산","모리아산"],"a":[3],"r":"교 28과 46p"},{"n":183,"l":"28과 나의 시작과 끝은 누구의 손에 달려 있을까요?","q":"사무엘상 31장에서 사울 왕이 깊은 상처를 입고 할례받지 않은 자들이 와서 자신을 모욕할까 어떤 생각을 가졌나요?","o":["슬퍼하였다","두려워하였다","끌려가리라 하였다","하나님께 욕이 되리라 하였다"],"a":[2],"r":"교 28과 46p"},{"n":184,"l":"28과 나의 시작과 끝은 누구의 손에 달려 있을까요?","q":"사울 왕이 블레셋 군인이 쏜 화살에 맞고 심한 상처를 받은 후에 어떻게 죽었나요?","o":["블레셋 군인의 칼에 찔려서","끝까지 따라 온 종이 찔러서","무기를 든 자가 칼로 찔러서","자기의 칼 위에 엎드려져서"],"a":[4],"r":"교 28과 46p"},{"n":185,"l":"28과 나의 시작과 끝은 누구의 손에 달려 있을까요?","q":"우리에게 힘을 주시는 말씀으로 ’내게 능력 주시는 자 안에서 내가 모든 것을 할 수 있느니라‘는 말씀이 기록된 성경 구절은 무엇인가요?","o":["시편 139편 14절","이사야 41장 10절","이사야 43장 4절","빌립보서 4장 13절"],"a":[4],"r":"학 28과 16p"},{"n":186,"l":"28과 나의 시작과 끝은 누구의 손에 달려 있을까요?","q":"예레미야 29장 11절에서 하나님이 주시고자 하는 것이 아닌 것은 무엇인가요?","o":["평안","희망","생명","미래"],"a":[3],"r":"외 28과 렘 29:11"},{"n":187,"l":"29과 죽음은 어떤 의미일까요?","q":"죽음은 죄의 결과로 로마서 6장 23절에서 죄의 삯은 무엇이라고 하엮나요?","o":["사망","가난함","구원받지 못함","유업을 받지 못함"],"a":[1],"r":"교 29과 48p"},{"n":188,"l":"29과 죽음은 어떤 의미일까요?","q":"다음 성경 구절에서 ’백발은 영화의 면류관이라 공의의 길에서 얻으리라‘는 말씀은 어느 것인가요?","o":["창세기 25장 8절","레위기 19장 32절","시편 116편 15절","잠언 16장 31절"],"a":[4],"r":"교 29과 48p"},{"n":189,"l":"29과 죽음은 어떤 의미일까요?","q":"인간의 죽음은 하나님의 주권 아래 정해진 사건으로 히브리서 9장 27절에서 ’한 번 죽는 것은 사람에게 정해진 것이요 그 후에는 무엇이 있을 것이라‘고 하였나요?","o":["죄","이름","심판","부활 장사지냄"],"a":[3],"r":"교 29과 48p"},{"n":190,"l":"29과 죽음은 어떤 의미일까요?","q":"전도서 3장 2 – 8절에 기록된 때가 아닌 것은 무엇인가요?","o":["헐 때","일할 때","찾을 때","미워할 때"],"a":[2],"r":"교 29과 50p"},{"n":191,"l":"29과 죽음은 어떤 의미일까요?","q":"전도서 3장에서 하나님이 모든 것을 지으시되 무엇을 따라 아름답게 하셨다고 하였나요?","o":["때","계절","계획","질서"],"a":[1],"r":"학 29과 17p"},{"n":192,"l":"29과 죽음은 어떤 의미일까요?","q":"전도서 3장 11절에서 하나님이 사람들에게 주신 마음은 무엇인가요?","o":["평안한 마음","감사하는 마음","때를 아는 마음","영원을 사모하는 마음"],"a":[4],"r":"본 29과 전 3:11"},{"n":193,"l":"29과 죽음은 어떤 의미일까요?","q":"전도서 3장 2절에 ’날 때가 있고 ( ) 때가 있으며 ( ) 때가 있고 심은 것을 ( ) 때가 있으며‘라는 말씀에서 ( )안에 들어갈 말씀으로 순서대로 잘 연결된 것은 무엇인가요?","o":["뽑을 – 심을 – 죽을","거둘 – 살릴 - 심을","죽을 – 뽑을 – 심을","죽을 - 심을 - 뽑을"],"a":[4],"r":"외 29과 전 3:2"},{"n":194,"l":"30과 죽음 다음에는 어떻게 될까요?","q":"죽음 이후 소망에 대한 말씀으로 요한복음 11장 25, 26절에서 무릇 살아서 예수를 믿는 자는 어떻게 된다고 하였나요?","o":["이 땅에서 잘 된다","평강의 삶을 산다","영원히 죽지 않는다","천국에 들어 간다"],"a":[3],"r":"교 30과 52p"},{"n":195,"l":"30과 죽음 다음에는 어떻게 될까요?","q":"사도 바울은 부활의 몸을 설명하며 고린도전서 15장 42 – 44절에서 육의 몸으로 심고 무엇으로 다시 산다고 하였나요?","o":["창조의 몸","신령한 몸","강건한 몸","보이지 않는 몸"],"a":[2],"r":"교 30과 52p"},{"n":196,"l":"30과 죽음 다음에는 어떻게 될까요?","q":"하나님의 백성들이 들어갈 새 하늘과 새 땅에 대한 내용으로 요한계시록 21장 1 – 4절에서 다시 있지 않을 것으로 말한 것이 아닌 것은 무엇인가요?","o":["사망","아픈 것","곡하는 것","염려하는 것","애통하는 것"],"a":[4],"r":"교 30과 52p"},{"n":197,"l":"30과 죽음 다음에는 어떻게 될까요?","q":"다음 보기에서 나사로와 관계 없는 것은 무엇인가요?","o":["헌데 투성이","위로를 받음","아브라함의 품","상에서 떨어진 것을 먹음","물 한방을 부탁함"],"a":[5],"r":"교 30과 54p"},{"n":198,"l":"30과 죽음 다음에는 어떻게 될까요?","q":"죽음 이후에 대한 설명이 잘못된 것은 무엇인가요?","o":["인간에게 죽음은 두렵지만 다시 선한 사람으로 태어날 것을 믿는다","예수님을 믿는 우리는 죽음이 영원한 천국으로 들어가는 새로운 시작이다","우리는 예수님처럼 다시 살아나는 영광스러운 부활을 얻게 될 것이다","우리는 부활의 소망을 가슴에 품고 천국을 바라보며 살아가야 한다"],"a":[1],"r":"교 30과 55p"},{"n":199,"l":"30과 죽음 다음에는 어떻게 될까요?","q":"다음 보기에서 누가복음 16장에 기록된 부자와 관계 없는 것은 무엇인가요?","o":["자색 옷과 고운 베옷을 입음","날마다 호화롭게 즐김","음부에서 고통당함","불꽃 가운데서 괴로움","천사들에게 받들림"],"a":[5],"r":"학 30과 19p"},{"n":200,"l":"31과 지구를 어떻게 돌봐야 하나요?","q":"창조 세계를 파괴하는 행위가 하나님의 심판 대상이 됨을 경고하는 말씀으로 요한계시록 11장 18절에서 땅을 망하게 하는 자들을 어떻게 하실 것이라고 하였나요?","o":["저주 할 것","땅을 파게 할 것","열매가 없게 할 것","멸망시키실 것"],"a":[4],"r":"교 31과 58p"},{"n":201,"l":"31과 지구를 어떻게 돌봐야 하나요?","q":"시편 139편에서 하나님의 임재가 모든 영역에 미치고 있음을 표현한 말씀이 아닌 것은 무엇인가요?","o":["하늘에 올라갈지라도","땅 끝에 가 있을지라도","스올에 내 자리를 펼지라도","바다 끝에 가서 거주할지라도"],"a":[2],"r":"교 31과 58p"},{"n":202,"l":"31과 지구를 어떻게 돌봐야 하나요?","q":"하나님이 만드신 세상을 책임 있게 돌보는 하나님의 백성으로서의 생활이 아닌 것은 무엇인가요?","o":["잔반 남기지 않기","재활용 분리 배출하기","물을 계속 틀어놓고 양치하기","하나님이 만드신 지구 사랑하기"],"a":[3],"r":"교 31과 60,61p"},{"n":203,"l":"31과 지구를 어떻게 돌봐야 하나요?","q":"로마서 8장 19절에서 모든 피조물이 간절히 기다리는 것은 무엇인가요?","o":["햇빛과 비","이른 비와 늦은 비","하나님의 아들들","때를 따라 주시는 은혜"],"a":[3],"r":"학 31과 21p"},{"n":204,"l":"31과 지구를 어떻게 돌봐야 하나요?","q":"로마서 8장 18절에서 하나님의 자녀로서 받는 고난은 장차 나타날 무엇과 비교할 수 없다고 하였나요?","o":["영광","천국","상급","면류관"],"a":[1],"r":"본 31과 롬 8:18"},{"n":205,"l":"31과 지구를 어떻게 돌봐야 하나요?","q":"예레미야 12장 4절에서 무엇 때문에 땅이 슬퍼하고 풀들이 마른다고 하였나요?","o":["기후 변화 때문에","사람들의 악함 때문에","땅에 문제가 있어서","기근이 심하기 때문에"],"a":[2],"r":"외 31과 렘 12:4"},{"n":206,"l":"32과 미디어에서 알게 된 내용은 다 사실일까요?","q":"참된 자유는 진리에 대한 인식에서 비롯됨을 가르치는 말씀으로 요한복음 8장 32절에서 무엇이 우리를 자유롭게 하리라고 하였나요?","o":["진리","결단","정직","믿음"],"a":[1],"r":"교 32과 62p"},{"n":207,"l":"32과 미디어에서 알게 된 내용은 다 사실일까요?","q":"디지털 정보의 홍수 속에서 바울은 빌립보서 1장 10절에서 지극히 무엇을 분별하고 권면하였나요?","o":["악한 것","선한 것","세상의 것","중요한 것"],"a":[2],"r":"교 32과 62p"},{"n":208,"l":"32과 미디어에서 알게 된 내용은 다 사실일까요?","q":"야고보서 1장 5절에서 누구든지 무엇이 부족하거든 하나님께 구하라고 하였나요?","o":["돈","능력","지혜","분별력"],"a":[3],"r":"교 32과 64p"},{"n":209,"l":"32과 미디어에서 알게 된 내용은 다 사실일까요?","q":"다음 보기에서 미디어를 바르게 사용하는 생활이 아닌 것은 무엇인가요?","o":["하나님이 뜻이 아닌 나쁜 내용임을 알았을 때 즉시 멈춘다","약속된 일이 있을 때 스스로 미디어를 절제하지 못하고 계속한다","내가 무엇을 보거나 듣든지 부모님이나 선생님에게 당당하게 말한다","미디어를 접할 때 나의 꿈이나 하나님을 알아 가는데 도움이 되는 것을 한다"],"a":[2],"r":"교 32과 64p"},{"n":210,"l":"32과 미디어에서 알게 된 내용은 다 사실일까요?","q":"시편 119편 37절에서 저자는 내 눈을 돌이켜 무엇을 보지 말게 해 달라고 하였나요?","o":["방탕한 것","어두운 것","화려한 것","허탄한 것"],"a":[4],"r":"학 32과 23p"},{"n":211,"l":"32과 미디어에서 알게 된 내용은 다 사실일까요?","q":"데살로니가전서 5장 21, 22절에서 범사에 헤아려 무엇을 취하라고 하였나요?","o":["열매","말씀","좋은 것","하나님의 뜻"],"a":[3],"r":"외 32과 살전 5:21"},{"n":212,"l":"33과 인공지능이 사람을 대신할 수 있나요?","q":"인공지능의 무분별한 사용은 하나님 앞에서 교만으로 이어지기에 잠언 16장 18절에서 교만은 무엇을 초래하게 된다고 하였나요?","o":["넘치게 됨","패망하게 됨","낙심하게 됨","어리석게 됨"],"a":[2],"r":"교 33과 66p"},{"n":213,"l":"33과 인공지능이 사람을 대신할 수 있나요?","q":"인간은 하나님의 형상을 따라 지음 받은 소중한 존재로 고린도전서 6장 19절에서 인간의 몸은 무엇이라고 하였나요?","o":["복음의 증인","믿음의 열매","사랑의 증거","하나님의 성전"],"a":[4],"r":"교 33과 66p"},{"n":214,"l":"33과 인공지능이 사람을 대신할 수 있나요?","q":"하나님은 인간을 귀하게 여기셔서 시편 8편 5절에서 누구보다 조금 못하게 만드셨나요?","o":["천사","귀신","하나님","초능력자"],"a":[3],"r":"교 33과 68p"},{"n":215,"l":"33과 인공지능이 사람을 대신할 수 있나요?","q":"시편 8편 5절에서 하나님은 우리의 머리에 어떤 관을 씌워 주셨나요?","o":["영화와 존귀","영화와 평안","영광과 존귀","영광과 평안"],"a":[1],"r":"학 33과 25p"},{"n":216,"l":"33과 인공지능이 사람을 대신할 수 있나요?","q":"시편 8편에서 시인은 우리 주의 무엇이 온 땅에 아름답다고 하였나요?","o":["주권","나라","이름","섭리"],"a":[3],"r":"본 33과 시 8:1,9"},{"n":217,"l":"33과 인공지능이 사람을 대신할 수 있나요?","q":"시편 8편 4절에서 하나님은 우리를 어떻게 대하신다고 하였나요?","o":["생각하시고 도우신다","생각하시고 돌보신다","사랑하시고 도우신다","사랑하시고 돌보신다"],"a":[2],"r":"외 33과 시 8:4"},{"n":218,"l":"34과 과학기술로 사람을 만들어도 될까요?","q":"생명의 근원이 하나님이심을 선언하는 말씀으로 욥기 33장 4절에서 전능자의 기운이 나를 어떻게 하시 리라고 하였나요?","o":["비추신다","붙잡는다","살리신다","인도한다"],"a":[3],"r":"교 34과 70p"},{"n":219,"l":"34과 과학기술로 사람을 만들어도 될까요?","q":"이사야 29장 16절에서 토기장이와 진흙을 비유하고 있는 것으로 잘 연결된 것은 무엇인가요?","o":["하나님 – 천사","하나님 – 피조물","이스라엘 – 이방인","이스라엘 - 피조물"],"a":[2],"r":"교 34과 70p"},{"n":220,"l":"34과 과학기술로 사람을 만들어도 될까요?","q":"이사야 29장 16절에서 진흙(토기)이 말한 내용은 무엇인가요?","o":["그가 나를 짓지 않았다","그는 총명이 없다","그는 사랑이 없다","그가 나를 돕지 않았다"],"a":[1,2],"r":"교 34과 72p"},{"n":221,"l":"34과 과학기술로 사람을 만들어도 될까요?","q":"다음 보기의 설명이 잘못된 것은 무엇인가요?","o":["우리 생명의 주인은 오직 하나님이시다","우리는 죽음 이후에 있을 부활을 소망해야 한다","생명은 하나님이 결정하시지만 죽음은 우리가 결정한다","생명은 하나님의 선물이다"],"a":[3],"r":"교 34과 72p 교 28과 47p"},{"n":222,"l":"34과 과학기술로 사람을 만들어도 될까요?","q":"이사야 29장 16절에서 진흙의 영적인 상황은 어떠한가요?","o":["회개를 잘함","죄를 짓지 않음","원하는대로 함","패역함이 심함"],"a":[4],"r":"본 34과 사 29:16"},{"n":223,"l":"34과 과학기술로 사람을 만들어도 될까요?","q":"시편 36편 9절에서 ‘진실로 ( )의 원천이 주께 있사오니 주의 빛 안에서 우리가 빛을 보리이다’는 말씀에서 ( )안에 들어갈 말씀은 무엇인가요?","o":["땅","물","만물","생명"],"a":[4],"r":"외 34과 시 36:9"},{"n":224,"l":"35과 진짜 ‘쉼’은 무엇일까요?","q":"안식일에 대한 규정은 십계명중 몇 번째 계명인가요?","o":["1계명","2계명","3계명","4계명"],"a":[4],"r":"교 35과 76p"},{"n":225,"l":"35과 진짜 ‘쉼’은 무엇일까요?","q":"신명기 5장 12 – 14절에서 일곱째 날 안식해야 하는 대상으로 말한 것이 아닌 것은 무엇인가요?","o":["자신","종","객","땅"],"a":[4],"r":"교 35과 76p"},{"n":226,"l":"35과 진짜 ‘쉼’은 무엇일까요?","q":"창세기 1장 28절을 근거로 일에 대한 설명이 맞는 것은 무엇인가요?","o":["단순한 생계의 수단이다","타락의 결과이다","창조 때 주어진 하나님의 뜻이다","안식과 대립되는 것이다"],"a":[3],"r":"교 35과 76p"},{"n":227,"l":"35과 진짜 ‘쉼’은 무엇일까요?","q":"신명기 5장 14절을 근거로 안식일에 대한 설명이 아닌 것은 무엇인가요?","o":["일에서 벗어나 쉬는 시간이다","안식일의 주체는 하나님이시다","하나님께 속한 날이다","하나님 안에서 누리는 안식이다"],"a":[1],"r":"교 35과 76p"},{"n":228,"l":"35과 진짜 ‘쉼’은 무엇일까요?","q":"하나님께서 안식의 삶을 위해 엿새 동안은 어떻게 하라고 하였나요?","o":["할 수 있는 일만 행하라","계획을 세워서 철저하게 행하라","힘써 네 모든 일을 행하라","안식일을 준비하며 천천히 행하라"],"a":[3],"r":"교 35과 78p"},{"n":229,"l":"35과 진짜 ‘쉼’은 무엇일까요?","q":"우리는 거룩한 쉼의 시간인 주일에 행할 일이 아닌 것은 무엇인가요?","o":["예배를 드리고 말씀을 배우기","가족과 식사하며 하나님이 주신 은혜 나누기","하나님 안에서 몸과 마음을 편안하게 하며 쉬기","하루 종일 내가 좋아하는 취미 생활에만 빠져있기"],"a":[4],"r":"학 35과 30p"},{"n":230,"l":"35과 진짜 ‘쉼’은 무엇일까요?","q":"전도서 3장 13절에서 먹고 마시는 것과 수고함으로 낙을 누리는 것이 무엇이라고 하였나요?","o":["일의 기쁨","하나님의 선물","가치 있는 인생","열매를 수확하는 일"],"a":[2],"r":"외 35과 전 3:13"},{"n":231,"l":"36과 우리는 어떤 직업을 선택해야 할까요?","q":"일하는 자의 자세로 골로새서 3장 22절에서 종들이 상전들에게 해야 할 삶이 아닌 것은 무엇인가요?","o":["성실한 마음으로 해야 한다","오직 주를 두려워함으로 해야 한다","사람의 눈에 잘 보이기 위해서만 해야 한다","사람을 기쁘시게 하는 자와 같이 하지 말아야 한다"],"a":[3],"r":"교 36과 80p"},{"n":232,"l":"36과 우리는 어떤 직업을 선택해야 할까요?","q":"일을 책임감 있게 감당한 자의 존귀함에 대해 잠언 22장 29절에서 일을 잘 처리하는 사람은 누구 앞에 설 것이라고 하였나요?","o":["왕","주인","하나님","상 주시는 자"],"a":[1],"r":"교 36과 80p"},{"n":233,"l":"36과 우리는 어떤 직업을 선택해야 할까요?","q":"시편 90편 17절에서 시인은 하나님의 은혜를 구하며 무엇을 견고하게 해 달라고 하였나요?","o":["자신의 가정","하나님의 나라","말씀대로 사는 일","우리 손으로 행한 일"],"a":[4],"r":"교 36과 80p"},{"n":234,"l":"36과 우리는 어떤 직업을 선택해야 할까요?","q":"골로새서 3장 22절에서 종들은 모든 일에 육신의 상전들에게 어떻게 해야 하나요?","o":["정직해야 한다","순종해야 한다","당당해야 한다","함께해야 한다"],"a":[2],"r":"교 36과 82p"},{"n":235,"l":"36과 우리는 어떤 직업을 선택해야 할까요?","q":"고린도전서 10장 31절에서 우리는 먹든지 마시든지 무엇을 하든지 무엇을 위하여 하라고 하였나요?","o":["가족","복음 전파","주의 성전","하나님의 영광"],"a":[4],"r":"학 36과 31p"},{"n":236,"l":"36과 우리는 어떤 직업을 선택해야 할까요?","q":"골로새서 3장 23절에서 무슨 일을 하든지 마음을 다하여 누구에게 하듯 해야 하나요?","o":["주","왕","주인","높은 자"],"a":[1],"r":"외 36과 골 3:23"},{"n":237,"l":"37과 예술을 어떻게 표현해야 하나요?","q":"예술에 대한 설명이 잘못된 것은 무엇인가요?","o":["인간의 창의적인 능력의 결과물이다","하나님이 창조하신 세계의 아름다움을 드러내고 선포한다","사람들에게 하나님의 존재와 성품을 드러내는 중요한 도구가 된다","하나님이 사람들에게 예술적 재능으로 하나님의 영광을 위해 사용하도록 격려하신다"],"a":[1],"r":"교 37과 84p"},{"n":238,"l":"37과 예술을 어떻게 표현해야 하나요?","q":"시편 19편 1, 2절에서 시인인 다윗이 의인화하여 하나님의 창조의 아름다움을 노래한 것이 아닌 것은 무엇인가요?","o":["낮","밤","땅","궁창","하늘"],"a":[3],"r":"교 37과 84p"},{"n":239,"l":"37과 예술을 어떻게 표현해야 하나요?","q":"시편 19편 3절에서 창조 세계의 자체가 보여주는 조건의 내용으로 말한 것이 아닌 것은 무엇인가요?","o":["언어도 없다","색깔도 없다","말씀도 없다","들리는 소리도 없다"],"a":[2],"r":"교 37과 84p"},{"n":240,"l":"37과 예술을 어떻게 표현해야 하나요?","q":"출애굽기 31장 1 – 11절에서 성막을 만들기 위해 하나님으로부터 예술의 지혜와 재능을 받은 사람은 누구인가요?","o":["브살렐과 오홀리압","네레오와 암블리아","누기오와 에베네도","블레곤과 우르바노"],"a":[1],"r":"교 37과 85p"},{"n":241,"l":"37과 예술을 어떻게 표현해야 하나요?","q":"성막을 지을 때 브살렐이 금, 은, 놋을 다듬고 보석을 깎았다면 오홀리압은 무엇을 하였나요(출 31:10)?","o":["설계하는 일을 함","재료를 준비하는 일","건축하는 일을 지휘함","실로 천을 짜고 수를 놓음"],"a":[4],"r":"교 37과 86p"},{"n":242,"l":"37과 예술을 어떻게 표현해야 하나요?","q":"하나님께서 성막을 짓기 위해 오홀리압에게 주신 것은 무엇인가요(출 31:6)?","o":["지혜","명예","겸손","성실"],"a":[1],"r":"학 37과 33p"},{"n":243,"l":"37과 예술을 어떻게 표현해야 하나요?","q":"시편 19편 1절에서 하늘이 하나님의 영광을 선포하고 궁창이 나타낸 것은 무엇이라고 하였나요?","o":["하나님의 선하신 주권과 섭리","하나님의 손으로 하신 일","만물의 변화와 역할을 찬양함","자연의 조화와 아름다운 일"],"a":[2],"r":"외 37과 시 19:1"},{"n":244,"l":"38과 일상 속 미신을 어떻게 해야 하나요?","q":"‘우리가 곧 신이다’ 라고 하는 뉴에이지의 세계관에 대하여 우리가 가져야 할 바른 신앙은 무엇인가요?","o":["인간은 물질과 정신, 현실과 영적 세계 모두에서 우위에 있다","인간은 스스로 구원에 이를 수 있고 삶의 모든 영역을 완전히 통제한다","인간은 하나님의 개입이 없어도 스스로 치유와 회복을 이루어 갈 수 있다","나는 여호와라 나 외에는 다른 이가 없나니 나 밖에 신이 없느니라"],"a":[4],"r":"교 38과 88p"},{"n":245,"l":"38과 일상 속 미신을 어떻게 해야 하나요?","q":"이사야 8장 19절에서 산 자를 위하여 누구에게 묻겠느냐고 하였나요?","o":["귀신","선지자","죽은 자","하나님의 사자"],"a":[3],"r":"교 38과 88p"},{"n":246,"l":"38과 일상 속 미신을 어떻게 해야 하나요?","q":"신명기 18장 10, 11절에서 하나님이 보시기에 가증한 일을 행하는 사람으로 말한 것이 아닌 것은 무엇인가요?","o":["점쟁이와 길흉을 말하는 자","요술하는 자와 무당","진언자와 신접자","박수나 초혼자","미혼자나 기혼자"],"a":[5],"r":"교 38과 90p"},{"n":247,"l":"38과 일상 속 미신을 어떻게 해야 하나요?","q":"다음 보기에서 하나님 나라의 백성이 가져야 할 삶의 모습이 아닌 것은 무엇인가요?","o":["하나님이 유일한 신이심을 믿는다","힘들고 불안할 때 하나님께 기도한다","우리는 하나님의 피조물이라는 사실을 믿는다","말씀과 기도로 문화에 나타난 다양한 미신을 경계한다","우리는 하나님의 자녀이기에 초월적 지식을 추구해야 한다"],"a":[5],"r":"교 38과 91p"},{"n":248,"l":"38과 일상 속 미신을 어떻게 해야 하나요?","q":"하나님은 백성들에게 가나안 땅에 들어가면 가증한 일을 본받지 말고 하나님 앞에서 어떻게 하라고 하였나요?","o":["경건하라","완전하라","신실하라","화목하라"],"a":[2],"r":"교 38과 90p"},{"n":249,"l":"38과 일상 속 미신을 어떻게 해야 하나요?","q":"골로새서 2장 8절에서 철학과 헛된 속임수에 대해 주의해야 할 일이 무엇인가요?","o":["지식으로 인해 교만해 지기 때문에","세상에 대한 분별력이 없기 때문에","복을 받는 일이 아니기 때문에","그리스도를 따름이 아니기 때문에"],"a":[4],"r":"본 38과 골 2:8"},{"n":250,"l":"38과 일상 속 미신을 어떻게 해야 하나요?","q":"이사야 45장 5절에서 ‘나는 ( ) 나 외에 다른 이가 없나니 나 밖에 신이 없느니라’는 말씀에서 ( ) 안에 들어갈 말씀은 무엇인가요?","o":["여호와라","창조주라","주권자라","전능자라"],"a":[1],"r":"외 38과 사 45:5"},{"n":251,"l":"39과 순결, 왜 지켜야 하나요?","q":"요셉은 형제들에게 팔려 누구의 집에서 종살이 하였나요?","o":["본디오","보디발","보아스","벨사살"],"a":[2],"r":"교 39과 94p"},{"n":252,"l":"39과 순결, 왜 지켜야 하나요?","q":"보디발의 아내가 유혹을 할 때 요셉이 거절한 일은 팔려간 지 몇 년이 지나 일어난 일인가요?","o":["7년","10년","20년","27년"],"a":[2],"r":"교 39과 94p"},{"n":253,"l":"39과 순결, 왜 지켜야 하나요?","q":"고린도전서 6장 18, 19절에서 바울은 우리의 몸은 성령의 전이라고 권면하며 자기 몸에 죄를 범하게 하는 무엇을 피하라고 하였나요?","o":["거짓말","분쟁","우상","음행"],"a":[4],"r":"교 39과 94p"},{"n":254,"l":"39과 순결, 왜 지켜야 하나요?","q":"우리가 요셉과 같이 하나님 앞에서 성(性)적 순결을 지키는 생활이 아닌 것은 무엇인가요?","o":["몸과 마음으로 하나님이 기뻐하시는 방법으로 지켜요","죄의 유혹이 올 때 요셉처럼 자리를 피해요","혼자 있을 때도 하나님이 지켜 보고 계심을 기억해요","잘못된 말이나 그림과 영상을 보지 않고 멀리해요","친구가 요구하면 분별하지 않고 무엇이든지 해요"],"a":[5],"r":"교 39과 96p"},{"n":255,"l":"39과 순결, 왜 지켜야 하나요?","q":"보디발의 아내가 요셉을 유혹할 때 유혹을 거절하기 위해 한 말은 무엇인가요?","o":["내가 어찌 이 큰 악을 행하여 하나님께 죄를 지으리이까","내가 어찌 하나님의 명령을 어기고 큰 죄를 행하리이까","내가 어찌 이 큰 악을 행하여 주인에게 죄를 지으리이까","내가 어찌 주인의 명령을 어기고 이 큰 죄를 지으리이까"],"a":[1],"r":"학 39과 37p"},{"n":256,"l":"39과 순결, 왜 지켜야 하나요?","q":"디모데후서 2장 22절에서 주를 깨끗한 마음으로 부르는 자들과 함께 따라야 할 것으로 말한 것이 아닌 것은?","o":["의","믿음","소망","사랑","화평"],"a":[3],"r":"외 39과 딤후 2:22"},{"n":257,"l":"40과 건강한 이성 관계란 무엇일까요?","q":"데살로니가전서 4장 3절에서 하나님의 뜻은 무엇이라고 하였나요?","o":["거룩함","정직함","전도함","겸손함"],"a":[1],"r":"교 40과 98p"},{"n":258,"l":"40과 건강한 이성 관계란 무엇일까요?","q":"데살로니가전서 4장 4절에서 하나님은 자기의 아내를 어떻게 대할 줄을 아는 것이라고 하였나요?","o":["깨끗함과 순수함","깨끗함과 존귀함","거룩함과 순수함","거룩함과 존귀함"],"a":[4],"r":"교 40과 100p"},{"n":259,"l":"40과 건강한 이성 관계란 무엇일까요?","q":"레위기 18장 22절과 20장 13절에서 동성간의 동침은 하나님이 싫어하시는 가증한 죄로 로마서 1장 26 절에서 바울은 하나님이 무엇에 내버려 두셨다고 하였나요?","o":["개인의 판단","부끄러운 욕심","인간의 분별력","인간의 본질적인 사랑"],"a":[2],"r":"교 40과 98p"},{"n":260,"l":"40과 건강한 이성 관계란 무엇일까요?","q":"고린도전서 6장 9, 10절에서 하나님이 싫어하시는 가증한 죄를 짓는 자들은 무엇을 유업으로 받지 못한다고 하였나요?","o":["구원의 복","하늘의 상급","하나님의 나라","건강한 가정의 자손"],"a":[3],"r":"교 40과 98p"},{"n":261,"l":"40과 건강한 이성 관계란 무엇일까요?","q":"로마서 1장 26절에서 남자와 여자가 가져야 할 마음은 무엇인가요?","o":["섬김","성결","순리","존중"],"a":[3],"r":"학 40과 39p"},{"n":262,"l":"40과 건강한 이성 관계란 무엇일까요?","q":"하나님이 기뻐하시는 남자와 여자의 관계에 대해 잘못 말한 것은 무엇인가요?","o":["나는 배우자를 존중한다","나는 예수님이 나를 사랑하신 것처럼 배우자를 사랑한다","나는 하나님이 보시기에 배우자에게 정직할 것이다","나는 화가 날 때도 배우자를 배려해 줄 것이다","나는 배우자의 마음보다는 내 욕구만 앞세우며 대할 것이다"],"a":[5],"r":"학 40과 40p"},{"n":263,"l":"41과 중독에 빠지지 않으려면 어떻게 해야 할까요?","q":"고린도전서 6장 19 – 20절에서 우리 몸은 하나님께로부터 받은 바 성령의 전이기에 우리 몸으로 어떻게 해야 하나요?","o":["날마다 회개해야 한다","하나님의 말씀에 순종해야 한다","하나님 앞에서 깨끗하게 해야 한다","하나님께 영광을 돌려야 한다"],"a":[4],"r":"교 41과 102p"},{"n":264,"l":"41과 중독에 빠지지 않으려면 어떻게 해야 할까요?","q":"갈라디아서 5장 22, 23절에서 말한 성령의 열매는 무엇인가요?","o":["정결","정의","절제","겸손"],"a":[3],"r":"교 41과 102p"},{"n":265,"l":"41과 중독에 빠지지 않으려면 어떻게 해야 할까요?","q":"갈라디아서 6장 1, 2절에서 개인이 어려운 환경을 극복할 수 있도록 공동체가 해야 할 중요한 역할은 무엇인가요?","o":["어려움을 알아 주라","서로의 짐을 지라","모르는 척 덮어 주라","조용하게 바라만 보라"],"a":[2],"r":"교 41과 102p"},{"n":266,"l":"41과 중독에 빠지지 않으려면 어떻게 해야 할까요?","q":"하나님의 자녀로서 세상의 여러 가지 유혹이 있을 때 절제하는 생활이 아닌 것은 무엇인가요?","o":["처한 상황이 이끄는대로 따라 행해요","마음속으로 하나님을 떠올리며 이겨내요","부모님이나 선생님에게 고민을 말하고 도움을 청해요","불건전한 게임이나 유트브보다는 성경을 읽고 하나님께 기도해요"],"a":[1],"r":"학 41과 42p"},{"n":267,"l":"41과 중독에 빠지지 않으려면 어떻게 해야 할까요?","q":"고린도전서 6장 14절에서 우리가 음행을 멀리해야 하는 이유가 그리스도를 살리신 하나님께서 권능으로 우리를 어떻게 하시기 때문인가요?","o":["다시 심판하시기 때문","다시 세우시기 때문","다시 살리시기 때문","다시 사랑하시기 때문"],"a":[3],"r":"본 41과 고전 6:14"},{"n":268,"l":"41과 중독에 빠지지 않으려면 어떻게 해야 할까요?","q":"고린도전서 6장 12절에서 바울은 고린도교회 성도들을 향해 그리스도인으로서의 온전한 삶을 살기 위해 모든 것이 가능하나 다 어떠하다고 하였나요?","o":["할 수 있는 것은 아니다","유익한 것은 아니다","이룰수 있는 것은 아니다","하나님의 뜻은 아니다"],"a":[2],"r":"외 41과 고전 6:12"},{"n":269,"l":"42과 나는 고난 속에서 어떻게 해야 하나요?","q":"욥기 1장 1절에서 욥에 대해 소개한 것이 아닌 것은 무엇인가요?","o":["온전하다","정직하다","악에서 떠난 자다","하나님을 경외하였다","구제하였다"],"a":[5],"r":"교 42과 108p"},{"n":270,"l":"42과 나는 고난 속에서 어떻게 해야 하나요?","q":"하루 아침에 자녀들이 죽임을 당하고 재산도 다 잃게 되는 고난 앞에 욥기 1장 21절에서 욥이 고백한 내용은 무엇인가요?","o":["돕는 이도 여호와시오","주신 이도 여호와시요","거두신 이도 여호와시오니","인도하시는 이도 여호와시오니"],"a":[2,3],"r":"교 42과 108p"},{"n":271,"l":"42과 나는 고난 속에서 어떻게 해야 하나요?","q":"욥은 인간의 생사화복을 주관하시는 분이 하나님이심을 믿고 고난을 당한 일에 대해 욥기 1장 22절에서 보여준 모습은 무엇인가요?","o":["범죄하지 않았다","원망하지 않았다","낙심하지 않았다","도망가지 않았다"],"a":[1,2],"r":"교 42과 108p"},{"n":272,"l":"42과 나는 고난 속에서 어떻게 해야 하나요?","q":"하나님은 받은 고난을 회복시키시는데 시편 34편 18절에서 여호와는 마음이 상한 자에게 가까이 하시고 어떤 자를 구원하신다고 하였나요?","o":["참고 인내하는 자","기쁨으로 감사하는 자","담대하게 의지하는 자","충심으로 통회하는 자"],"a":[4],"r":"교 42과 108p"},{"n":273,"l":"42과 나는 고난 속에서 어떻게 해야 하나요?","q":"우리가 고난을 당할 때 행해야 할 모습이 아닌 것은 무엇인가요?","o":["고난에서 벗어나기 위해 세상적인 방법을 찾아본다","하나님께서 회복해 주실 것을 신뢰하며 담대해진다","하나님의 전능하심을 의지하고 기다리며 기도한다","고난속에서도 하나님이 사랑해 주심을 믿고 인내한다"],"a":[1],"r":"교 42과 111p"},{"n":274,"l":"42과 나는 고난 속에서 어떻게 해야 하나요?","q":"종들을 통해 자녀들도 죽고 재산도 잃어 버렸다는 말을 듣고 욥이 보여준 모습이 아닌 것은 무엇인가요?","o":["겉옷을 찢었다","머리털을 밀었다","재를 머리에 뿌렸다","땅에 엎드려 예배하였다"],"a":[3],"r":"학 42과 43p"},{"n":275,"l":"42과 나는 고난 속에서 어떻게 해야 하나요?","q":"호세아 6장 1절에서 여호와께서 우리를 찢으셨으나 도로 낫게 하실 것이요 우리를 치셨으나 어떻게 해 주실 것이라고 하였나요?","o":["치료해 주신다","싸매어 주신다","나음을 주신다","평안을 주신다"],"a":[2],"r":"외 42과 호 6:1"},{"n":276,"l":"43과 우리는 연약한 자들에게 어떻게 해야 하나요?","q":"사회적 약자에 대한 설명으로 잘못된 것은 무엇인가요?","o":["하나님은 친히 사회적 약자들을 돌보시는 분이시다","사회적 약자들은 단지 도움을 받아야 할 대상자들이다","사회적 약자들은 하나님의 형상대로 지음 받은 존귀한 자들이다","신앙의 진정성은 사회적 약자에 대한 책임있는 돌봄으로 나타나야 한다"],"a":[2],"r":"교 43과 112p"},{"n":277,"l":"43과 우리는 연약한 자들에게 어떻게 해야 하나요?","q":"하나님은 연약한 자들을 보호하시는데 신명기 10장 18절에서 고아와 과부를 위하여 정의를 행하시며 나그네를 사랑하여 무엇을 주신다고 하였나요?","o":["떡과 옷","떡과 기름","집과 옷","집과 기름"],"a":[1],"r":"교 43과 112p"},{"n":278,"l":"43과 우리는 연약한 자들에게 어떻게 해야 하나요?","q":"마태복음 25장 40절에서 예수님은 누구에게 행한 것이 곧 자기에게 한 것이라 하였나요?","o":["제자","작은 자","믿는 자","병든 자"],"a":[2],"r":"교 43과 112p"},{"n":279,"l":"43과 우리는 연약한 자들에게 어떻게 해야 하나요?","q":"우리가 주변에 있는 약자들에게 할 수 있는 일이 아닌 것은 무엇인가요?","o":["구제를 통해 약자를 돌보아요","약자를 위해서 항상 기도해요","약자를 무시하고 좋은 것은 가져가요","약자에게 필요한 것이 무엇인지 도와주어요"],"a":[3],"r":"교 43과 114,115p"},{"n":280,"l":"43과 우리는 연약한 자들에게 어떻게 해야 하나요?","q":"야고보서 1장 27절에서 참된 경건은 누구를 환난 중에 돌보는 것이라고 하였나요?","o":["고아와 과부","아이와 여자","나그네와 갇힌 자","가난한 자와 연약한 자"],"a":[1],"r":"외 43과 약 1:27"},{"n":281,"l":"44과 우리는 무엇을 기대하며 살아야 할까요?","q":"회복에 대한 설명이 잘못된 것은 무엇인가요?","o":["하나님은 타락한 세상을 온전히 회복하시기 위해 지금도 일하신다","타락한 세상의 회복은 인간의 능력이나 열심에 따라 이루어진다","인간의 영적·육체적·정서적·사회적인 것과 자연 만물에까지 이르는 총체적 회복이다","하나님의 회복은 인간 개인의 회복을 넘어 창조 세계의 온전한 완성까지 주관하신다"],"a":[2],"r":"교 44과 116p"},{"n":282,"l":"44과 우리는 무엇을 기대하며 살아야 할까요?","q":"이사야 61장 1절에서 고통받는 이스라엘 백성들을 회복시키실 것에 대해 말씀하셨는데 회복의 내용이 아닌 것은 무엇인가요?","o":["마음이 상한 자를 고치셨다","포로된 자에게 자유를 주셨다","환난을 당하는 자를 싸매어 주셨다","갇힌 자에게 놓임을 선포하셨다"],"a":[3],"r":"교 44과 116p"},{"n":283,"l":"44과 우리는 무엇을 기대하며 살아야 할까요?","q":"하나님은 인간의 회복을 넘어 창조 세계의 온전한 완성을 주관하셔서 이사야 65장 17절에서 무엇을 창조하셨나요?","o":["낮과 밤","빛과 물","계절의 변화","새 하늘과 새 땅"],"a":[4],"r":"교 44과 116p"},{"n":284,"l":"44과 우리는 무엇을 기대하며 살아야 할까요?","q":"이사야 61장 3절에서 하나님이 슬픈 자에게 무엇을 주어 회복시키시나요?","o":["화관","말씀","영광","축복"],"a":[1],"r":"교 44과 116p"},{"n":285,"l":"44과 우리는 무엇을 기대하며 살아야 할까요?","q":"하나님의 회복에 대해 잘못된 것은 무엇인가요?","o":["하나님 나라의 온전한 회복을 기다린다","하나님은 온전한 회복을 위해 일하신다","하나님은 세상을 온전히 회복 시키신다","하나님은 죄의 세상을 회복시키지 못하신다"],"a":[4],"r":"학 44과 48p"},{"n":286,"l":"44과 우리는 무엇을 기대하며 살아야 할까요?","q":"이사야 61장 4절에서 하나님의 회복하심을 받은 자들이 행할 것으로 말한 것이 아닌 것은 무엇인가요?","o":["오래 황폐하였던 곳을 다시 쌓을 것이다","옛부터 무너진 곳을 다시 일으킬 것이다","전쟁으로 피폐해진 곳을 다시 세울 것이다","대대로 무너져 있던 것들을 중수할 것이다"],"a":[3],"r":"본 44과 사 61:4"},{"n":287,"l":"44과 우리는 무엇을 기대하며 살아야 할까요?","q":"미가서 6장 8절에서 하나님이 선한 것으로 보이신 것이 아닌 것은 무엇인가요?","o":["정의를 행하는 것","은혜를 사모하는 것","인자를 사랑하는 것","겸손하게 네 하나님과 함께 행하는 것"],"a":[2],"r":"44과 미 6:8"},{"n":288,"l":"특별공과1 통일은 어떻게 이뤄져야 하나요?","q":"에스겔 37장 16절에서 하나님이 에스겔에게 두 막대기를 가져다가 쓰라고 하신 것은 무엇인가요?","o":["유다와 그 짝 이스라엘 자손","요셉과 그 짝 이스라엘 온 족속","르우벤과 그 짝 하나님의 자손","에브라임과 그 짝 하나님의 온 족속"],"a":[1,2],"r":"교 특별1 120p"},{"n":289,"l":"특별공과1 통일은 어떻게 이뤄져야 하나요?","q":"에스겔 37장 17절에서 두 막대기들을 어떻게 하라고 하였나요?","o":["하나는 이스라엘에 하나는 바벨론에 두라","하나는 이스라엘에 하나는 성막에 두라","서로 합하여 성막 앞에 두라","서로 합하여 하나가 되게 하라"],"a":[4],"r":"교 특별1 120p"},{"n":290,"l":"특별공과1 통일은 어떻게 이뤄져야 하나요?","q":"에스겔 37장 17절에서 에스겔에게 두 막대기들을 서로 합하여 하나가 되게 하라는 것은 어느 왕국을 의미하나요?","o":["유다와 이스라엘","유다와 바벨론","이스라엘과 애굽","이스라엘과 바벨론"],"a":[1],"r":"교 특별1 120p"},{"n":291,"l":"특별공과1 통일은 어떻게 이뤄져야 하나요?","q":"솔로몬의 아들로 이스라엘이 북쪽 이스라엘과 남쪽 유다로 나누어질 때 남쪽 유다를 다스린 왕은 누구인가요?","o":["여로보암","르호보암","로루하마","여룹바알"],"a":[2],"r":"교 특별1 122p"},{"n":292,"l":"특별공과1 통일은 어떻게 이뤄져야 하나요?","q":"에스겔 37장 21절 하나님이 잡혀간 이스라엘을 회복시키시기 위해 행한 일이 아닌 것은 무엇인가요?","o":["여러 나라에서 인도하심","사방에서 모으심","여러 나라를 물리치심","고국 땅으로 돌아오게 하심"],"a":[3],"r":"본 특별1 겔 37:21"},{"n":293,"l":"특별공과1 통일은 어떻게 이뤄져야 하나요?","q":"하나님은 에스겔 37장 22절에서 유다와 이스라엘이 한 나라를 이루어 한 임금이 모두 다스리게 하신다고 하였는데 ‘한 임금’은 누구인가요?","o":["아담","다윗","예수님","솔로몬"],"a":[3],"r":"교 특별1 122p"},{"n":294,"l":"특별공과1 통일은 어떻게 이뤄져야 하나요?","q":"요한복음 17장 21절에서 ‘아버지여, 아버지께서 내 안에, 내가 아버지 안에 있는 것 같이 그들도 다 ( ) 되어 우리 안에 있게 하사 세상으로 아버지께서 나를 보내신 것을 믿게 하옵소서’라는 말씀에서 ( ) 안에 들어갈 말씀은 무엇인가요?","o":["자녀가","백성이","하나가","증인이"],"a":[3],"r":"외 특별1 요 17:21"},{"n":295,"l":"특별공과2 우리는 무엇을 믿어야 할까요?","q":"디모데전서 4장 1절에서 말세에 나타날 것으로 말한 것은 무엇인가요?","o":["주를 부인하고 따르지 아니하는 자","자칭 자신을 구원자라고 말하는 자","미혹하는 영과 귀신의 가르침을 따르는 자","사단의 유혹과 거짓의 가르침을 따르는 자"],"a":[3],"r":"교 특별2 124p"},{"n":296,"l":"특별공과2 우리는 무엇을 믿어야 할까요?","q":"디모데전서 4장 3절에서 이단이 강요하는 것으로 말한 것은 무엇인가요?","o":["혼인을 금함","특정 음식을 배격함","자기 수양을 주장함","진리를 인정하지 않음"],"a":[1,2],"r":"교 특별2 124p"},{"n":297,"l":"특별공과2 우리는 무엇을 믿어야 할까요?","q":"다음 보기에서 성경의 중심 내용이 아닌 것은 무엇인가요?","o":["삼위일체의 하나님","예수 그리스도의 신성","십자가의 구속의 은혜","개인의 헌신을 통한 구원"],"a":[4],"r":"교 특별2 124p"},{"n":298,"l":"특별공과2 우리는 무엇을 믿어야 할까요?","q":"디모데전서 4장에서 하나님이 지으신 모든 것이 선하기에 믿는 자들과 진리를 아는 자들은 어떻게 받으면 된다고 하였나요?","o":["감사함으로","존귀함으로","구제함으로","즐거워함으로"],"a":[1],"r":"교 특별2 126p"},{"n":299,"l":"특별공과2 우리는 무엇을 믿어야 할까요?","q":"우리 인간이 스스로 자신을 구원할 수 없는 이유와 구원을 받을 수 있는 길에 대한 내용이 잘 연결된 것은 무엇인가요?","o":["죄인이기 때문에 – 말씀을 햄함으로","죄인이기 때문에 – 예수를 믿음으로","연약하기 때문에 – 말씀을 행함으로","연약하기 때문에 – 예수를 믿음으로"],"a":[2],"r":"교 특별2 126p"},{"n":300,"l":"특별공과2 우리는 무엇을 믿어야 할까요?","q":"다음 보기에서 성경의 내용과 성경구절이 잘못 연결된 것은 무엇인가요?","o":["하나님이 지으신 모든 것이 선하다 – 디모데전서 4장 4절","감사함으로 받으면 버릴 것이 없다 – 디모데전서 4장 4절","하나님의 말씀과 기도로 거룩해 진다 – 디모데전서 4장 5절","예수 그리스도 외에는 구원이 없다 – 사도행전 4장 12절","예수는 신성은 있고 육신은 없다 – 디모데전서 4장 2절"],"a":[5],"r":"학 특별2 51p"},{"n":301,"l":"특별공과2 우리는 무엇을 믿어야 할까요?","q":"디모데전서 4장 5절에서 ‘하나님의 ( )과 ( )로 ( )하여짐이라’는 말씀에서 ( )안에 들어갈 말씀이 아닌 것은 무엇인가요?","o":["말씀","기도","사랑","거룩"],"a":[3],"r":"외 특별2 딤전 4:5"},{"n":302,"l":"추수감사주일과 감사는 어떻게 표현해야 할까요?","q":"누가복음 17장에서 열 명의 나병 환자가 예수님께 다가가지 못하고 멀리 서서 무엇이라고 부르짖었나요?","o":["우리를 고쳐 주소서","우리를 도와 주소서","우리를 불쌍히 여기소서","우리를 지나치지 마소서"],"a":[3],"r":"교 추수 128p"},{"n":303,"l":"추수감사주일과 감사는 어떻게 표현해야 할까요?","q":"누가복음 17장에서 나병 환자가 예수님을 간절히 부를 때 무엇이라고 말씀하셨나요?","o":["성전에 가서 회개의 기도를 드리라","가서 제사장들에게 너희 몸을 보이라","내게로 오라 내가 너희를 고쳐 주리라","가서 제자들에게 너희의 몸을 보이라"],"a":[2],"r":"교 추수 128p"},{"n":304,"l":"추수감사주일과 감사는 어떻게 표현해야 할까요?","q":"열 명의 나병 환자가 주님을 말씀을 듣고 가다가 나은 것을 알고 주님께 돌아온 사람은 몇 명인가요?","o":["1명","3명","7명","9명"],"a":[1],"r":"교 추수 128p"},{"n":305,"l":"추수감사주일과 감사는 어떻게 표현해야 할까요?","q":"주님을 말씀을 듣고 가다가 나은 것을 알고 주님께 돌아온 사마리아인이 행한 것이 아닌 것은 무엇인가요?","o":["감사하였다","하나님께 영광을 돌렸다","예수의 발 앞에 엎드렸다","예수 앞에 와서 절을 하였다"],"a":[4],"r":"교 추수 128p"},{"n":306,"l":"추수감사주일과 감사는 어떻게 표현해야 할까요?","q":"다음 보기에서 감사하는 생활이 아닌 것은 무엇인가요?","o":["가정에서 나에게 음식을 준비해서 주시는 부모님께 감사한다","학교에서 나에게 이야기를 해주고 들어주는 친구에게 감사한다","교회에서 나에게 하나님의 말씀을 가르쳐 주시는 선생님께 감사한다","학원에서 나와 함께 공부하며 도와주는 친구에게 감사한다","동네에서 나를 비방하는 친구를 미워하고 무시한다"],"a":[5],"r":"교 추수 131p"},{"n":307,"l":"추수감사주일과 감사는 어떻게 표현해야 할까요?","q":"예수님은 다시 돌아와 감사의 고백을 한 사마리아인에게 무엇이라고 선포해 주셨나요?","o":["네 믿음이 너를 구원하였느니라","네 믿음대로 복을 받을지니라","네가 아주 큰 믿음을 소유하였느니라","이방인 중에 이만한 믿음을 가진 자가 없느니라"],"a":[1],"r":"학 추수 53p"},{"n":308,"l":"추수감사주일과 감사는 어떻게 표현해야 할까요?","q":"시편 50편 23절에서 어떻게 하는 자가 하나님을 영화롭게 한다고 하였나요?","o":["천국을 바라보는 자","기도에 힘쓰는 자","하나님의 말씀에 순종하는 자","감사로 제사를 드리는 자"],"a":[4],"r":"외 추수 시 50:23"},{"n":309,"l":"성탄주일과 성탄절을 어떻게 보내야 할까요?","q":"동방 박사들은 예루살렘에서 누구를 만나 ‘유대인의 왕으로 나신 이가 어디 계시냐’고 물었나요?","o":["백성들","제사장","헤롯왕","바리새인"],"a":[3],"r":"교 성탄 132p"},{"n":310,"l":"성탄주일과 성탄절을 어떻게 보내야 할까요?","q":"헤롯 왕이 대제사장과 서기관들에게 메시야의 탄생지를 물었을 때 성경 예언을 인용해 어디에서 태어나실 것이라고 하였나요?","o":["나사렛","베들레헴","예루살렘","가버나움"],"a":[2],"r":"교 성탄 132p"},{"n":311,"l":"성탄주일과 성탄절을 어떻게 보내야 할까요?","q":"마태복음 2장 13절에서 주의 사자가 요셉에게 현몽하여 헤롯 왕을 피해 어디로 피신하라고 하였나요?","o":["애굽","모압","암몬","블레셋"],"a":[1],"r":"교 성탄 132p"},{"n":312,"l":"성탄주일과 성탄절을 어떻게 보내야 할까요?","q":"동방 박사들은 별의 인도를 받아 집에 들어가 아기 예수께 엎드려 경배하고 드린 예물이 아닌 것은 무엇인가요?","o":["황금","유향","몰약","보석"],"a":[4],"r":"교 성탄 132p"},{"n":313,"l":"성탄주일과 성탄절을 어떻게 보내야 할까요?","q":"헤롯 왕이 아기 예수님을 찾으면 알려 달라고 동방 박사들에게 말한 이유는 무엇인가요?","o":["경배를 드리기 위해서","아기 예수를 죽이기 위해서","아기 예수를 왕으로 세우기 위해서","아기 예수를 성전에서 키우기 위해서"],"a":[2],"r":"교 성탄 134p"},{"n":314,"l":"성탄주일과 성탄절을 어떻게 보내야 할까요?","q":"예수께서 이 세상에 오신 이유가 무엇인가요?","o":["복을 주시기 위해서","우리를 구원하시기 위해서","마귀와 싸워 이기기 위해서","하나님의 나라를 세우기 위해서"],"a":[2],"r":"학 성탄 56p"},{"n":315,"l":"성탄주일과 성탄절을 어떻게 보내야 할까요?","q":"마태복음 1장 23절 말씀에서 ‘임마누엘’의 이름의 뜻은 무엇인가요?","o":["하나님이 우리의 구원이시다","하나님이 우리와 함께 싸우신다","하나님이 우리와 함께 계시다","하나님이 우리의 방패이시다"],"a":[3],"r":"외 성탄 마 1:23"}];
+const RANGES = [[1,73],[74,167],[168,243],[244,315]];
+const PER_GAME = 50;
+
+const OK_MSG = ["오호라~ 제법인데?","와우! 이걸 맞힌다고?","천재 등장! 모두 비켜","헐~ 너 혹시 AI야?","정답! 오늘 폼 미쳤다!","크으~ 역시 믿고 있었다고!","이야~ 뇌가 반짝반짝하네!","어라? 공부 좀 했나 본데?","이 정도면 퀴즈 고인물 인정!","와~ 찍은 거 아니지?","정답! 지식력 +100 상승!","오~ 너 좀 치는데?","대박! 이건 인정할 수밖에!","이야~ 오늘 감 좋은데?","정답! 뇌섹미 폭발!","헉! 이 어려운 걸 맞히다니!","역시! 내 눈은 정확했어!","이야~ 정답을 찢어버렸네!","이 정도면 퀴즈 왕 예약!","띠용~ 너의 실력은 어디까지?"];
+const OK_EMO = ["😎","🤩","🧠","✨","🔥","👏","💡","🎯","🙌","⭐","🚀","💯"];
+const NO_MSG = ["헉! 이걸 틀리다니!","땡! 뇌가 잠깐 외출했나 봐!","아이고~ 아까비!","땡! 옆에서 아빠가 웃고 있습니다","에엥? 다시 생각해 봐!","땡! 정답이 도망갔습니다!","어라라? 이게 아닌데?","땡! 찍은 것 들통남!","땡! 오늘 뇌가 휴가 중?","띠용~ 예상 밖의 선택인데?","헐~ 정답이 널 피했나 봐!","땡! 다시 도전?","땡! 아빠가 놀릴 준비 완료됨!","이런이런~ 퀴즈가 만만치 않지?","아니 이럴 수가! 믿었는데!","정답이 말합니다. 난 여기 있지롱","삐용삐용! 오답 발생!","괜찮아! 천재도 가끔 틀려!"];
+const NO_EMO = ["😵","🙈","😅","🤔","😜","🫣","🌀","🚨","😬","🙃"];
+const COMBO_MSG = {
+  10:["🔥","10 COMBO","오호~ 10연속 정답! 너 좀 치는데?"],
+  20:["⚡","20 COMBO","20콤보?! 잠깐만… 너 혹시 정답지 봤어?"],
+  30:["🤖","30 COMBO","30콤보!! 헐~ 너 사람 맞아? 뇌에 AI 심었지?!"],
+  40:["🚨","40 COMBO","40콤보!!! 제작자 긴급회의 중! 이걸 다 맞힌다고?!"]
+};
+const WRONG_MSG = {
+  3:["📶","3연속 오답","잠깐! 뇌에 와이파이 연결 좀!"],
+  5:["🌀","5연속 오답","어라라?! 5연속 땡! 너 지금 일부러 그러는 거지?"]
+};
+const CIRC = "①②③④⑤⑥⑦⑧⑨⑩";
+
+/* ================= UTIL ================= */
+const $ = id => document.getElementById(id);
+const pick = a => a[Math.floor(Math.random()*a.length)];
+const shuffle = a => { a=a.slice(); for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; };
+const fmt = n => n.toLocaleString("ko-KR");
+const esc = s => String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const store = {
+  get(k,d){ try{ const v=localStorage.getItem(k); return v==null?d:JSON.parse(v);}catch(e){return d;} },
+  set(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+};
+function show(id){ document.querySelectorAll(".screen").forEach(s=>s.classList.toggle("on",s.id===id)); window.scrollTo(0,0); }
+function lessonTag(l){
+  let m=l.match(/^(\d+과)\s*(.*)$/); if(m) return [m[1],m[2]];
+  m=l.match(/^(특별공과\d)\s*(.*)$/); if(m) return [m[1],m[2]];
+  m=l.match(/^(\S+주일)과\s*(.*)$/); if(m) return [m[1],m[2]];
+  return ["주제",l];
+}
+
+/* ================= SOUND ================= */
+let muted = store.get("bq_mute",false), actx=null;
+function tone(freq,dur,type="sine",vol=.12,delay=0){
+  if(muted) return;
+  try{
+    actx = actx || new (window.AudioContext||window.webkitAudioContext)();
+    const t=actx.currentTime+delay, o=actx.createOscillator(), g=actx.createGain();
+    o.type=type; o.frequency.setValueAtTime(freq,t);
+    g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+    o.connect(g).connect(actx.destination); o.start(t); o.stop(t+dur+.02);
+  }catch(e){}
+}
+const SFX = {
+  ok(){ tone(660,.12,"triangle"); tone(990,.18,"triangle",.12,.09); },
+  no(){ tone(180,.25,"sawtooth",.08); tone(140,.3,"sawtooth",.08,.12); },
+  combo(){ [523,659,784,1047].forEach((f,i)=>tone(f,.18,"triangle",.12,i*.08)); },
+  err(){ for(let i=0;i<8;i++) tone(200+Math.random()*900,.06,"square",.05,i*.07); },
+  fan(){ [523,659,784,1047,1319,1568].forEach((f,i)=>tone(f,.3,"triangle",.12,i*.12)); },
+  sad(){ [392,349,311,262].forEach((f,i)=>tone(f,.3,"sine",.1,i*.18)); }
+};
+function vib(p){ try{ navigator.vibrate && navigator.vibrate(p); }catch(e){} }
+function setSndIcon(){ $("snd").textContent = muted?"🔇":"🔊"; }
+$("snd").onclick=()=>{ muted=!muted; store.set("bq_mute",muted); setSndIcon(); if(!muted) SFX.ok(); };
+setSndIcon();
+
+/* ================= HOME ================= */
+let rStart=0, rEnd=3;
+function buildHome(){
+  const rgs=$("rgs"); rgs.innerHTML="";
+  RANGES.forEach((r,i)=>{
+    const d=document.createElement("div"); d.className="rg"; d.id="rg"+i;
+    d.innerHTML=`<b>범위 ${i+1}</b><span>${r[0]}~${r[1]}번</span>`;
+    d.onclick=()=>{ // 탭: 시작/끝 똑똑하게 설정
+      if(i<rStart) rStart=i; else if(i>rEnd) rEnd=i;
+      else if(rStart===rEnd && rStart===i){ /* keep */ }
+      else { rStart=i; rEnd=i; }
+      syncRange();
+    };
+    rgs.appendChild(d);
+  });
+  ["rs","re"].forEach(id=>{ const s=$(id); s.innerHTML=RANGES.map((r,i)=>`<option value="${i}">범위 ${i+1} (${r[0]}~${r[1]})</option>`).join(""); });
+  $("rs").onchange=e=>{ rStart=+e.target.value; if(rEnd<rStart) rEnd=rStart; syncRange(); };
+  $("re").onchange=e=>{ rEnd=+e.target.value; if(rStart>rEnd) rStart=rEnd; syncRange(); };
+  const last=store.get("bq_last",null);
+  if(last){ $("nm").value=last.name||""; $("ag").value=last.age||""; if(last.rs!=null){rStart=last.rs;rEnd=last.re;} }
+  syncRange();
+  $("nm").oninput=renderHomeRec;
+  renderHomeRec();
+}
+function syncRange(){
+  $("rs").value=rStart; $("re").value=rEnd;
+  RANGES.forEach((r,i)=>{ const d=$("rg"+i); d.classList.toggle("in",i>=rStart&&i<=rEnd); d.classList.toggle("edge",i===rStart||i===rEnd); });
+  const a=RANGES[rStart][0], b=RANGES[rEnd][1];
+  $("rinfo").textContent = `${rangeLabel(rStart,rEnd)} · 문제 ${a}~${b}번 (${b-a+1}문항) 중 무작위 ${PER_GAME}문제`;
+}
+const rangeLabel=(s,e)=> s===e?`범위 ${s+1}`:`범위 ${s+1}~${e+1}`;
+
+/* ================= RECORDS ================= */
+const recs = () => store.get("bq_records",[]);
+function recTable(name, highlightId){
+  const mine = recs().filter(r=>r.name===name).sort((a,b)=>b.score-a.score||a.t-b.t).slice(0,10);
+  if(!mine.length) return `<div class="empty">아직 기록이 없어요. 첫 도전을 해봐요!</div>`;
+  const md=["🥇","🥈","🥉"];
+  return `<table class="rec"><tr><th>순위</th><th>날짜</th><th>범위</th><th class="r">정답률</th><th class="r">점수</th></tr>`+
+    mine.map((r,i)=>`<tr class="${r.t===highlightId?'me':''}"><td class="medal">${md[i]||(i+1)}</td><td>${new Date(r.t).toLocaleDateString("ko-KR",{month:"numeric",day:"numeric"})}</td><td>${esc(r.range)}</td><td class="r">${r.acc}%</td><td class="r">${fmt(r.score)}</td></tr>`).join("")+`</table>`;
+}
+function renderHomeRec(){
+  const n=$("nm").value.trim();
+  if(!n || !recs().some(r=>r.name===n)){ $("homeRec").style.display="none"; return; }
+  $("homeRec").style.display=""; $("homeRecT").textContent=`${n}의 기록`; $("homeRecBody").innerHTML=recTable(n);
+}
+
+/* ================= GAME STATE ================= */
+let G=null;
+function startGame(list, retryMode){
+  const name=$("nm").value.trim(), age=$("ag").value.trim();
+  G = {
+    name, age, list, i:0, score:0, combo:0, maxCombo:0, wrongStreak:0,
+    firstOk:0, wrongTotal:0, wrongQs:[], retry:!!retryMode,
+    range: retryMode? "오답 복습" : rangeLabel(rStart,rEnd),
+    lastErrAt:-99, golden:new Set()
+  };
+  // 황금 문제: 2~3개 무작위 (첫 문제 제외)
+  if(!retryMode){ const idx=shuffle([...Array(list.length).keys()].slice(1)).slice(0, 2+Math.floor(Math.random()*2)); idx.forEach(x=>G.golden.add(x)); }
+  $("pr").textContent=G.range;
+  show("quiz"); if(location.hash) history.replaceState({s:"quiz"},"","#quiz"); else history.pushState({s:"quiz"},"","#quiz");
+  renderQ(); updHud();
+}
+$("go").onclick=()=>{
+  const name=$("nm").value.trim(), age=$("ag").value.trim();
+  if(!name){ $("err").textContent="이름을 적어줘!"; $("nm").focus(); return; }
+  if(!age){ $("err").textContent="나이도 적어줘!"; $("ag").focus(); return; }
+  $("err").textContent="";
+  store.set("bq_last",{name,age,rs:rStart,re:rEnd});
+  const a=RANGES[rStart][0], b=RANGES[rEnd][1];
+  const pool=Q.filter(q=>q.n>=a&&q.n<=b);
+  startGame(shuffle(pool).slice(0,PER_GAME), false);
+};
+
+function updHud(bump){
+  $("sc").textContent=fmt(G.score); $("cb").textContent=G.combo;
+  $("ox").textContent=`${G.firstOk} / ${G.wrongTotal}`;
+  $("pn").textContent=`${G.i+1} / ${G.list.length}`;
+  $("pb").style.width=(G.i/G.list.length*100)+"%";
+  $("cbBox").classList.toggle("fire",G.combo>=5);
+  if(bump){ ["sc","cb"].forEach(id=>{ const e=$(id); e.classList.remove("bump"); void e.offsetWidth; e.classList.add("bump"); }); }
+}
+
+let cur=null; // current question runtime
+function renderQ(){
+  const q=G.list[G.i];
+  const [tag,title]=lessonTag(q.l);
+  $("ltag").textContent=tag; $("lt").textContent=title;
+  const golden=G.golden.has(G.i);
+  $("qc").classList.toggle("golden",golden);
+  $("qno").innerHTML=`문제 ${q.n}` + (golden?` <span class="chip">✨ 황금 문제 +30</span>`:"") + (q.a.length>1?` <span class="chip multi">정답 ${q.a.length}개 고르기</span>`:"");
+  $("qt").textContent=q.q;
+  const order=shuffle(q.o.map((t,k)=>({t,k:k+1})));
+  cur={q,order,need:q.a.length,sel:[],wrongPicks:[],attempts:0,done:false,golden};
+  const ops=$("ops"); ops.innerHTML="";
+  order.forEach((o,pos)=>{
+    const b=document.createElement("button"); b.className="opt"; b.dataset.k=o.k;
+    b.innerHTML=`<span class="n">${CIRC[pos]}</span><span>${esc(o.t)}</span>`;
+    b.onclick=()=>choose(b,o.k);
+    ops.appendChild(b);
+  });
+  const fb=$("fb"); fb.className="fb"; fb.innerHTML="";
+  updHud();
+}
+
+function choose(btn,k){
+  if(cur.done || btn.disabled || G.busy) return;
+  if(cur.need>1){
+    if(cur.sel.includes(k)){ cur.sel=cur.sel.filter(x=>x!==k); btn.classList.remove("sel"); return; }
+    cur.sel.push(k); btn.classList.add("sel");
+    if(cur.sel.length<cur.need) return;
+  } else cur.sel=[k];
+  grade();
+}
+
+function grade(){
+  const q=cur.q, ans=new Set(q.a), sel=cur.sel.slice();
+  const correct = sel.length===ans.size && sel.every(k=>ans.has(k));
+  cur.attempts++;
+  const btns=[...$("ops").children];
+  if(correct){
+    cur.done=true;
+    btns.forEach(b=>{ b.disabled=true; b.classList.remove("sel"); if(ans.has(+b.dataset.k)) b.classList.add("right"); });
+    SFX.ok(); vib(30);
+    G.wrongStreak=0;
+    if(cur.attempts===1) onFirstTryCorrect(); else onRetryCorrect();
+  } else {
+    // 틀린 선택 표시
+    const wrongNow=sel.filter(k=>!ans.has(k));
+    wrongNow.forEach(k=>{ const b=btns.find(b=>+b.dataset.k===k); b.classList.remove("sel"); b.classList.add("wrong"); b.disabled=true; if(!cur.wrongPicks.includes(k)) cur.wrongPicks.push(k); });
+    btns.forEach(b=>b.classList.remove("sel")); cur.sel=[];
+    $("qc").classList.remove("shake"); void $("qc").offsetWidth; $("qc").classList.add("shake");
+    SFX.no(); vib([60,40,60]);
+    const before=G.score;
+    G.score=Math.max(0,G.score-20); G.combo=0; G.wrongTotal++; G.wrongStreak++;
+    if(cur.attempts===1 && !G.wrongQs.includes(q)) G.wrongQs.push(q);
+    floatPts(before-G.score>0?`-${before-G.score}`:"-0","#f04438");
+    updHud(true);
+    showFb("no", pick(NO_EMO), pick(NO_MSG), before-G.score>0?`−${before-G.score}점`:"0점",
+      `<div class="sub">${cur.need>1?`정답 ${cur.need}개를 다시 골라 봐!`:"다른 보기를 다시 골라 봐!"} 💪</div>`+
+      (cur.attempts>=2?`<button class="giveup" id="gu">정답 보고 넘어가기</button>`:""));
+    if(cur.attempts>=2) $("gu").onclick=giveUp;
+    // 남은 보기가 정답뿐이면 자동 공개
+    const left=btns.filter(b=>!b.disabled);
+    if(left.length<=cur.need){ setTimeout(giveUp,900); }
+    if(G.wrongStreak===10){ setTimeout(showStrike,700); }
+    else if(WRONG_MSG[G.wrongStreak]){ const m=WRONG_MSG[G.wrongStreak]; setTimeout(()=>popup(m[0],m[1],m[2],"",true),350); }
+  }
+}
+
+function onFirstTryCorrect(){
+  const add = cur.golden?30:10;
+  G.score+=add; G.combo++; G.firstOk++; G.maxCombo=Math.max(G.maxCombo,G.combo);
+  let x2=false;
+  if(G.combo%5===0){ G.score*=2; x2=true; }
+  floatPts(`+${add}`,"#17b26a");
+  updHud(true);
+  const extra = x2?`<div class="sub">🔥 <b>${G.combo}콤보 달성!</b> 누적 점수 <b>2배</b> → ${fmt(G.score)}점</div>`:"";
+  showFb("ok", pick(OK_EMO), pick(OK_MSG), `+${add}점${x2?" ×2":""}`, extra+refLine(), true);
+  // 이벤트
+  if(G.combo===50){ setTimeout(showLegend,600); return; }
+  if(COMBO_MSG[G.combo]){ const m=COMBO_MSG[G.combo]; SFX.combo(); setTimeout(()=>popup(m[0],m[1],m[2],"누적 점수 ×2 🔥"),250); }
+  else if(x2){ SFX.combo(); toast(`🔥 ${G.combo}콤보! 점수 2배!`); }
+  else if(G.combo>=6 && G.i-G.lastErrAt>=8 && Math.random()<.22){ G.lastErrAt=G.i; setTimeout(systemError,500); }
+}
+function onRetryCorrect(){
+  const prev=cur.wrongPicks.map(k=>`<s>${CIRC[cur.order.findIndex(o=>o.k===k)]} ${esc(cur.q.o[k-1])}</s>`).join("<br>");
+  showFb("ok","😌","정답! 다시 푸니깐 맞췄네~","0점",
+    `<div class="remind">이전에 너가 고른 답은 이거였어….<br>${prev}<br>다시 푸니깐 맞췄네~ <b>또 실수는 안하겠지?</b> 😉</div>`+refLine(), true);
+}
+function giveUp(){
+  if(cur.done) return;
+  cur.done=true;
+  const ans=new Set(cur.q.a);
+  [...$("ops").children].forEach(b=>{ b.disabled=true; b.classList.remove("sel"); if(ans.has(+b.dataset.k)) b.classList.add("right"); });
+  const prev=cur.wrongPicks.map(k=>`<s>${esc(cur.q.o[k-1])}</s>`).join(", ");
+  showFb("no","📌","정답은 초록색 보기야!","",
+    `<div class="remind">내가 고른 답: ${prev||"-"}<br>다음엔 꼭 기억하자! 💪</div>`+refLine(), true);
+}
+const refLine=()=> cur.q.r?`<div class="ref">📖 출처: ${esc(cur.q.r)}</div>`:"";
+
+function showFb(kind,em,msg,pts,body,next){
+  const fb=$("fb");
+  fb.className="fb on "+kind;
+  fb.innerHTML=`<div class="m"><span class="em">${em}</span><span>${esc(msg)}</span><span class="pts">${pts}</span></div>${body||""}`+
+    (next?`<button class="btn" id="nx">${G.i+1>=G.list.length?"결과 보기 🏁":"다음 문제 ▶"}</button>`:"");
+  if(next) $("nx").onclick=nextQ;
+  setTimeout(()=>fb.scrollIntoView({behavior:"smooth",block:"nearest"}),60);
+}
+function nextQ(){
+  if(G.busy) return;
+  G.i++;
+  if(G.i>=G.list.length){ finish(); return; }
+  renderQ(); window.scrollTo({top:0,behavior:"smooth"});
+}
+
+/* ================= EFFECTS ================= */
+function floatPts(t,c){
+  const e=document.createElement("div"); e.className="floatpts"; e.textContent=t; e.style.color=c;
+  const r=$("sc").getBoundingClientRect(); e.style.left=(r.left+r.width/2)+"px"; e.style.top=(r.top+10)+"px";
+  document.body.appendChild(e); setTimeout(()=>e.remove(),1200);
+}
+let toastT;
+function toast(t){ const e=$("toast"); e.textContent=t; e.classList.add("on"); clearTimeout(toastT); toastT=setTimeout(()=>e.classList.remove("on"),1800); }
+function popup(em,tt,dd,x2,bad){
+  const p=$("pop"); p.classList.toggle("badp",!!bad);
+  $("popE").textContent=em; $("popE").className="big "+(bad?"spin":"bounce");
+  $("popT").textContent=tt; $("popD").textContent=dd; $("popX").innerHTML=x2?`<span class="x2">${x2}</span>`:"";
+  p.classList.add("on"); G.busy=true;
+  setTimeout(()=>{ p.classList.remove("on"); G.busy=false; },2000);
+}
+$("pop").onclick=()=>{ $("pop").classList.remove("on"); if(G) G.busy=false; };
+
+function systemError(){
+  const s=$("sys"); G.busy=true; SFX.err(); vib([40,30,40,30,40]);
+  document.body.classList.add("glitching");
+  let lines=["> brain_scan.exe ... OVERLOAD","> 정답률 측정 불가: 너무 높음","> CPU 온도: 🔥🔥🔥","> 재부팅 중..."], i=0;
+  $("sysCode").textContent=""; $("sysOk").style.opacity=0;
+  s.classList.add("on");
+  const iv=setInterval(()=>{ if(i<lines.length){ $("sysCode").textContent+=lines[i++]+"\n"; } },420);
+  setTimeout(()=>{ document.body.classList.remove("glitching"); },1300);
+  setTimeout(()=>{ $("sysOk").style.opacity=1; G.score+=50; updHud(true); SFX.ok(); },2100);
+  setTimeout(()=>{ clearInterval(iv); s.classList.remove("on"); G.busy=false; floatPts("+50","#f5b83d"); },3300);
+}
+
+function showStrike(){
+  G.busy=true; SFX.sad(); vib([200,100,200]);
+  $("strike").classList.add("on");
+}
+$("strikeBtn").onclick=()=>{ $("strike").classList.remove("on"); G.wrongStreak=0; G.busy=false; toast("📚 화해 완료! 채점봇이 다시 일하러 왔어요"); };
+
+/* 50콤보 전설 화면 */
+let fwRun=false;
+function showLegend(){
+  G.busy=true; SFX.fan(); vib([100,50,100,50,300]);
+  const L=$("legend"); L.classList.add("on");
+  const lines=[["잠깐… 이게 가능하다고?!",""],["50문제 전부 정답!!!","gold"],["축하합니다!",""],["당신은 퀴즈계의 전설입니다! 👑","gold"]];
+  const box=$("lgLines"); box.innerHTML=lines.map(l=>`<div class="ln ${l[1]}">${l[0]}</div>`).join("");
+  $("lgBtn").classList.remove("on");
+  [...box.children].forEach((e,i)=>setTimeout(()=>{ e.classList.add("on"); tone(784+i*120,.25,"triangle",.12); },1300+i*1300));
+  setTimeout(()=>$("lgBtn").classList.add("on"),1300+lines.length*1300);
+  startFireworks();
+}
+$("lgBtn").onclick=()=>{ $("legend").classList.remove("on"); fwRun=false; G.busy=false; finish(); };
+function startFireworks(){
+  const c=$("fw"), x=c.getContext("2d"); fwRun=true;
+  const fit=()=>{ c.width=innerWidth*devicePixelRatio; c.height=innerHeight*devicePixelRatio; x.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0); };
+  fit();
+  let P=[], t=0;
+  const cols=["#ffd84d","#ff6b6b","#7bd3ff","#b388ff","#7dffb0","#ffffff","#ffa94d"];
+  function burst(){
+    const cx=innerWidth*(.15+Math.random()*.7), cy=innerHeight*(.12+Math.random()*.4), col=pick(cols), n=60;
+    for(let i=0;i<n;i++){ const a=Math.PI*2*i/n, v=2+Math.random()*3.5; P.push({x:cx,y:cy,vx:Math.cos(a)*v,vy:Math.sin(a)*v,l:1,c:col}); }
+    tone(120+Math.random()*80,.25,"sine",.05);
+  }
+  (function loop(){
+    if(!fwRun){ x.clearRect(0,0,c.width,c.height); return; }
+    x.fillStyle="rgba(11,8,32,.22)"; x.fillRect(0,0,innerWidth,innerHeight);
+    if(t++%32===0) burst();
+    P.forEach(p=>{ p.x+=p.vx; p.y+=p.vy; p.vy+=.05; p.vx*=.985; p.l-=.012; x.globalAlpha=Math.max(p.l,0); x.fillStyle=p.c; x.beginPath(); x.arc(p.x,p.y,2.2,0,7); x.fill(); });
+    x.globalAlpha=1; P=P.filter(p=>p.l>0);
+    requestAnimationFrame(loop);
+  })();
+}
+
+/* ================= FINISH ================= */
+function finish(){
+  const total=G.list.length, acc=Math.round(G.firstOk/total*100);
+  let rec=null, prevBest=0, isNew=false;
+  if(!G.retry){
+    const all=recs();
+    prevBest=Math.max(0,...all.filter(r=>r.name===G.name).map(r=>r.score));
+    isNew = all.some(r=>r.name===G.name) ? G.score>prevBest : true;
+    rec={name:G.name,age:G.age,score:G.score,acc,ok:G.firstOk,total,maxCombo:G.maxCombo,range:G.range,t:Date.now()};
+    all.push(rec); store.set("bq_records",all.slice(-300));
+  }
+  const tiers=[[100,"👑","퀴즈계의 전설"],[90,"🏆","성경 박사님"],[75,"🥇","실력자 인정!"],[60,"🥈","꽤 하는데?"],[40,"📘","열공 중!"],[0,"🌱","교재랑 더 친해지자!"]];
+  const tr=G.maxCombo>=50?tiers[0]:tiers.find(t=>acc>=t[0]);
+  $("rEm").textContent=tr[1]; $("rTitle").textContent=tr[2];
+  $("rScore").textContent=fmt(G.score)+"점";
+  $("rWho").textContent=`${G.name}${G.age?` (${G.age}살)`:""} · ${G.range}`;
+  $("rNew").innerHTML = (!G.retry && isNew) ? `<span class="newrec">🎉 개인 최고 기록!</span>` : (G.retry?`<span class="newrec" style="background:#4f6cff;animation:none">오답 복습 모드 (기록 미저장)</span>`:"");
+  $("kAcc").textContent=acc+"%"; $("kOk").textContent=`${G.firstOk}/${total}`; $("kMax").textContent=G.maxCombo;
+  $("recT").textContent=`${G.name}의 기록 TOP 10`;
+  $("recBody").innerHTML=recTable(G.name, rec&&rec.t);
+  const w=G.wrongQs;
+  $("revN").textContent=w.length?`(${w.length})`:"";
+  $("rev").innerHTML = w.length? w.map(q=>`<li><div class="ql">${esc(lessonTag(q.l).join(" "))} · 문제 ${q.n}</div>${esc(q.q)}<br><span class="a">✔ ${q.a.map(k=>esc(q.o[k-1])).join(" / ")}</span>${q.r?` <span style="color:var(--mute);font-size:12px">(${esc(q.r)})</span>`:""}</li>`).join("") : `<div class="empty">한 번에 다 맞혔어요! 완벽 👏</div>`;
+  $("retryWrong").style.display=w.length?"":"none";
+  if(acc>=60) SFX.fan();
+  show("result"); history.replaceState({s:"result"},"","#result");
+}
+$("again").onclick=()=>{ $("go").click(); };
+$("home2").onclick=()=>goHome();
+$("retryWrong").onclick=()=>{ const w=G.wrongQs.slice(); startGame(shuffle(w), true); };
+function goHome(fromPop){ G=null; show("home"); renderHomeRec(); if(!fromPop && location.hash) history.back(); }
+
+/* ================= BACK / QUIT ================= */
+$("quit").onclick=()=>$("modal").classList.add("on");
+$("mNo").onclick=()=>$("modal").classList.remove("on");
+$("mYes").onclick=()=>{ $("modal").classList.remove("on"); fwRun=false; ["legend","strike","sys","pop"].forEach(i=>$(i).classList.remove("on")); goHome(); };
+window.addEventListener("popstate",()=>{
+  const on=document.querySelector(".screen.on").id;
+  if(on==="quiz"){ history.pushState({s:"quiz"},"","#quiz"); $("modal").classList.toggle("on"); }
+  else if(on==="result"){ goHome(true); }
+});
+
+buildHome();
+if(location.hash) history.replaceState({s:"home"},"",location.pathname);
+</script>
+<script>if("serviceWorker" in navigator&&location.protocol.startsWith("http")){navigator.serviceWorker.register("sw.js").catch(()=>{});}</script>
+</body>
+</html>
